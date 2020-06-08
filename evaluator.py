@@ -17,7 +17,9 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_agent, num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id,
+                            training_task=self.args.training_task,
+                            num_future_data=self.args.num_future_data)
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
         self.log_dir = self.args.log_dir
@@ -26,7 +28,7 @@ class Evaluator(object):
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
+                                         gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
@@ -41,34 +43,53 @@ class Evaluator(object):
         self.load_weights(model_load_dir, iteration)
         self.load_ppc_params(ppc_params_load_dir)
 
-    def metrics(self, forward_steps, render=True, reset=False):
-        # obs: v_xs, v_ys, rs, delta_ys, delta_phis, steers, a_xs, future_delta_ys1,..., future_delta_ysn,
-        #      future_delta_phis1,..., future_delta_phisn
-
-        delta_v_list = []
-        delta_ys_list = []
-        delta_phis_list = []
-        rewards_list = []
+    def run_an_episode(self):
+        reward_list = []
+        reward_info_dict_list = []
+        done = 0
         obs = self.env.reset()
-        for _ in range(forward_steps):
-            delta_v_list.append(obs[:, 0]-20)
-            delta_ys_list.append(obs[:, 3])
-            delta_phis_list.append(obs[:, 4])
+        while not done:
             processed_obs = self.preprocessor.tf_process_obses(obs)
-            action, neglogp = self.policy_with_value.compute_action(processed_obs)
-            obs, reward, done, info = self.env.step(action.numpy())
-            if render:
-                self.env.render()
-            if reset:
-                self.env.reset()
-            rewards_list.append(reward)
+            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+            obs, reward, done, info = self.env.step(action[0].numpy())
+            reward_info_dict_list.append(dict(punish_steer=info['punish_steer'],
+                                              punish_a_x=info['punish_a_x'],
+                                              punish_yaw_rate=info['punish_yaw_rate'],
+                                              devi_v=info['devi_v'],
+                                              devi_y=info['devi_y'],
+                                              devi_phi=info['devi_phi'],
+                                              veh2road=info['veh2road'],
+                                              veh2veh=info['veh2veh']))
+            self.env.render()
+            reward_list.append(reward)
         self.env.close()
-        delta_v_metric = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
-        delta_y_metric = np.sqrt(np.mean(np.square(np.array(delta_ys_list))))
-        delta_phis_metric = np.sqrt(np.mean(np.square(np.array(delta_phis_list))))
-        rewards_mean = np.mean(np.array(rewards_list))
+        episode_return = sum(reward_list)
+        episode_len = len(reward_list)
+        info_dict = dict()
+        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y', 'devi_phi', 'veh2road', 'veh2veh']:
+            info_key = list(map(lambda x: x[key], reward_info_dict_list))
+            mean_key = sum(info_key) / len(info_key)
+            info_dict.update({key: mean_key})
+        return episode_return, episode_len, info_dict
 
-        return delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean
+    def run_n_episode(self, n):
+        list_of_return = []
+        list_of_len = []
+        list_of_info_dict = []
+        for _ in range(n):
+            logger.info('logging {}-th episode'.format(_))
+            episode_return, episode_len, info_dict = self.run_an_episode()
+            list_of_return.append(episode_return)
+            list_of_len.append(episode_len)
+            list_of_info_dict.append(info_dict)
+        average_return = sum(list_of_return) / len(list_of_return)
+        average_len = sum(list_of_len) / len(list_of_len)
+        n_info_dict = dict()
+        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y', 'devi_phi', 'veh2road', 'veh2veh']:
+            info_key = list(map(lambda x: x[key], list_of_info_dict))
+            mean_key = sum(info_key) / len(info_key)
+            n_info_dict.update({key: mean_key})
+        return average_return, average_len, n_info_dict
 
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
@@ -78,17 +99,13 @@ class Evaluator(object):
 
     def run_evaluation(self, iteration):
         self.iteration = iteration
-        delta_y_metric, delta_phis_metric, delta_v_metric, rewards_mean = self.metrics(100, render=True, reset=False)
-        logger.info('delta_y_metric is {}, delta_phis_metric is {}, delta_v_metric is {}(exp_v=20), rewards_mean is {}'.format(
-            delta_y_metric,
-            delta_phis_metric,
-            delta_v_metric,
-            rewards_mean))
+        average_return, average_len, n_info_dict = self.run_n_episode(5)
+        n_info_dict.update(dict(average_return=average_return,
+                                average_len=average_len))
+        logger.info(n_info_dict)
         with self.writer.as_default():
-            self.tf.summary.scalar("evaluation/delta_y_metric", delta_y_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/delta_phis_metric", delta_phis_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/delta_v_metric", delta_v_metric, step=self.iteration)
-            self.tf.summary.scalar("evaluation/rewards_mean", rewards_mean, step=self.iteration)
+            for key, val in n_info_dict:
+                self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
 
             self.writer.flush()
 

@@ -3,9 +3,15 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/path_tracking_env.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/preprocessor.py" beforeDir="false" afterPath="$PROJECT_DIR$/preprocessor.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/utils/monitor.py" beforeDir="false" afterPath="$PROJECT_DIR$/utils/monitor.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -25,7 +31,7 @@
   <component name="Git.Settings">
     <option name="RECENT_BRANCH_BY_REPOSITORY">
       <map>
-        <entry key="$PROJECT_DIR$" value="debug" />
+        <entry key="$PROJECT_DIR$" value="big_change" />
       </map>
     </option>
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -48,11 +54,12 @@
     <property name="ASKED_ADD_EXTERNAL_FILES" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
     <property name="SHARE_PROJECT_CONFIGURATION_FILES" value="true" />
-    <property name="last_opened_file_path" value="$PROJECT_DIR$/path_tracking_env.py" />
+    <property name="last_opened_file_path" value="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined/toyota_env" />
     <property name="two.files.diff.last.used.file" value="$PROJECT_DIR$/path_tracking_env.py" />
   </component>
   <component name="RecentsManager">
     <key name="CopyFile.RECENT_KEYS">
+      <recent name="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined/toyota_env" />
       <recent name="$USER_HOME$/Software/anaconda3/envs/tf22/lib/python3.7/site-packages/gym/envs/user_defined" />
       <recent name="$PROJECT_DIR$" />
       <recent name="$USER_HOME$/Software/anaconda3/envs/tf2/lib/python3.7/site-packages/gym/envs/user_defined" />
@@ -317,7 +324,14 @@
       <option name="project" value="LOCAL" />
       <updated>1587555794175</updated>
     </task>
-    <option name="localTasksCounter" value="17" />
+    <task id="LOCAL-00017" summary="modify model, evaluator, a not bad version for mixed pg">
+      <created>1591452397349</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1591452397349</updated>
+    </task>
+    <option name="localTasksCounter" value="18" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -343,10 +357,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="511" y="253" key="#com.intellij.fileTypes.FileTypeChooser/65.24.1535.876@65.24.1535.876" timestamp="1587533190906" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1587555794037">
+    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1591452397251">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1587555794037" />
+    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1591452397251" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -363,38 +377,38 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1587530921442" />
-    <state width="1508" height="298" key="GridCell.Tab.0.bottom" timestamp="1589237429298">
+    <state width="1512" height="310" key="GridCell.Tab.0.bottom" timestamp="1591645938896">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1508" height="298" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1589237429298" />
-    <state width="1508" height="298" key="GridCell.Tab.0.center" timestamp="1589237429293">
+    <state width="1512" height="310" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1591645938896" />
+    <state width="1512" height="310" key="GridCell.Tab.0.center" timestamp="1591645938895">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1508" height="298" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1589237429293" />
-    <state width="1508" height="298" key="GridCell.Tab.0.left" timestamp="1589237429292">
+    <state width="1512" height="310" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1591645938895" />
+    <state width="1512" height="310" key="GridCell.Tab.0.left" timestamp="1591645938895">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1508" height="298" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1589237429292" />
-    <state width="1508" height="298" key="GridCell.Tab.0.right" timestamp="1589237429297">
+    <state width="1512" height="310" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1591645938895" />
+    <state width="1512" height="310" key="GridCell.Tab.0.right" timestamp="1591645938896">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1508" height="298" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1589237429297" />
-    <state width="1512" height="194" key="GridCell.Tab.1.bottom" timestamp="1587541565967">
+    <state width="1512" height="310" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1591645938896" />
+    <state width="1512" height="216" key="GridCell.Tab.1.bottom" timestamp="1591642730386">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="194" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1587541565967" />
-    <state width="1512" height="194" key="GridCell.Tab.1.center" timestamp="1587541565964">
+    <state width="1512" height="216" key="GridCell.Tab.1.bottom/65.24.1535.876@65.24.1535.876" timestamp="1591642730386" />
+    <state width="1512" height="216" key="GridCell.Tab.1.center" timestamp="1591642730386">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="194" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1587541565964" />
-    <state width="1512" height="194" key="GridCell.Tab.1.left" timestamp="1587541565964">
+    <state width="1512" height="216" key="GridCell.Tab.1.center/65.24.1535.876@65.24.1535.876" timestamp="1591642730386" />
+    <state width="1512" height="216" key="GridCell.Tab.1.left" timestamp="1591642730386">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="194" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1587541565964" />
-    <state width="1512" height="194" key="GridCell.Tab.1.right" timestamp="1587541565964">
+    <state width="1512" height="216" key="GridCell.Tab.1.left/65.24.1535.876@65.24.1535.876" timestamp="1591642730386" />
+    <state width="1512" height="216" key="GridCell.Tab.1.right" timestamp="1591642730386">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="194" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1587541565964" />
+    <state width="1512" height="216" key="GridCell.Tab.1.right/65.24.1535.876@65.24.1535.876" timestamp="1591642730386" />
     <state x="552" y="160" key="RollbackChangesDialog" timestamp="1586849033506">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -403,18 +417,18 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="254" height="198" key="ShowFilterAction_Filter_Popup/65.24.1535.876@65.24.1535.876" timestamp="1585747347662" />
-    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1587524930348">
+    <state width="768" height="452" key="XDebugger.FullValuePopup" timestamp="1591630749821">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1587524930348" />
+    <state width="768" height="452" key="XDebugger.FullValuePopup/65.24.1535.876@65.24.1535.876" timestamp="1591630749821" />
     <state x="181" y="119" width="1337" height="705" key="com.intellij.history.integration.ui.views.FileHistoryDialog" timestamp="1587018030243">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="181" y="119" width="1337" height="705" key="com.intellij.history.integration.ui.views.FileHistoryDialog/65.24.1535.876@65.24.1535.876" timestamp="1587018030243" />
-    <state x="465" y="168" key="com.intellij.ide.util.TipDialog" timestamp="1591370123145">
+    <state x="465" y="168" key="com.intellij.ide.util.TipDialog" timestamp="1591642738122">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="465" y="168" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1591370123145" />
+    <state x="465" y="168" key="com.intellij.ide.util.TipDialog/65.24.1535.876@65.24.1535.876" timestamp="1591642738122" />
     <state x="387" y="186" key="com.intellij.xdebugger.impl.breakpoints.ui.BreakpointsDialogFactory$2" timestamp="1586682371397">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -427,10 +441,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="555" y="161" key="git4idea.branch.GitSmartOperationDialog/65.24.1535.876@65.24.1535.876" timestamp="1586683455963" />
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1585749692493">
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1591463456577">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1585749692493" />
+    <state x="495" y="191" width="672" height="678" key="search.everywhere.popup/65.24.1535.876@65.24.1535.876" timestamp="1591463456577" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -441,44 +455,54 @@
           <option name="timeStamp" value="2" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>42</line>
-          <option name="timeStamp" value="11" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/optimizer.py</url>
-          <line>46</line>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>586</line>
+          <line>317</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>736</line>
+          <line>371</line>
           <option name="timeStamp" value="22" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>573</line>
+          <line>304</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>578</line>
+          <line>309</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>726</line>
+          <line>361</line>
           <option name="timeStamp" value="26" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/evaluator.py</url>
-          <line>99</line>
+          <line>116</line>
           <option name="timeStamp" value="28" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>357</line>
+          <option name="timeStamp" value="33" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>250</line>
+          <option name="timeStamp" value="34" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>270</line>
+          <option name="timeStamp" value="35" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
+          <line>276</line>
+          <option name="timeStamp" value="37" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

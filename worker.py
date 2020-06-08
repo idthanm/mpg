@@ -28,18 +28,20 @@ class OnPolicyWorker(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_agent, num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id,
+                            training_task=self.args.training_task,
+                            num_future_data=self.args.num_future_data)
         self.env = Monitor(self.env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.learner = learner_cls(policy_cls, self.args)
+        self.learner = learner_cls(policy_cls, self.args, obs_space, act_space)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.learner.set_weights(self.get_weights())
-        self.sample_n_step = self.args.sample_n_step
+        self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
+                                         gamma=self.args.gamma)
         self.log_dir = self.args.log_dir
 
         if not os.path.exists(self.log_dir):
@@ -47,8 +49,8 @@ class OnPolicyWorker(object):
 
         if self.worker_id == 0:
             self.writer = self.tf.summary.create_file_writer(self.log_dir + '/worker')
-            self.put_data_into_learner(*self.sample())
-            self.learner.export_graph(self.writer)
+            # self.put_data_into_learner(*self.sample())
+            # self.learner.export_graph(self.writer)
 
         self.stats = {}
         logger.info('Worker initialized')
@@ -88,14 +90,15 @@ class OnPolicyWorker(object):
     def sample(self):
         batch_data = []
         epinfos = []
-        for _ in range(self.sample_n_step):
+        for _ in range(self.batch_size):
             processed_obs = self.preprocessor.process_obs(self.obs)
-            action, neglogp = self.policy_with_value.compute_action(processed_obs)  # TODO
-            obs_tp1, reward, self.done, info = self.env.step(action.numpy())
+            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])  # TODO
+            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            batch_data.append((self.obs, action.numpy(), reward, obs_tp1, self.done, neglogp.numpy()))
-            self.obs = self.env.reset()
+            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
+            self.obs = self.env.reset() if self.done else obs_tp1
             maybeepinfos = info.get('episode')
+            # self.env.render()
             if maybeepinfos: epinfos.extend(maybeepinfos)
 
         return batch_data, epinfos

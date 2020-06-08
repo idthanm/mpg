@@ -49,7 +49,7 @@ class AllReduceOptimizer(object):
             worker_stats = []
             for i in range(self.args.epoch):
                 stats_list_per_epoch = []
-                for minibatch_index in range(int(self.args.sample_n_step * self.args.num_agent / self.args.mini_batch_size)):
+                for minibatch_index in range(int(self.args.batch_size / self.args.mini_batch_size)):
                     minibatch_grads = self.local_worker.compute_gradient_over_ith_minibatch(minibatch_index)
                     stats_list_per_epoch.append(self.local_worker.get_stats())
                     self.local_worker.apply_gradients(self.num_updated_steps, minibatch_grads)
@@ -68,7 +68,7 @@ class AllReduceOptimizer(object):
                                                                         self.stats['optimizing_time']))
             logger.info(pprint.pformat(self.stats['worker_stats'][0][0]['learner_stats']))
             for i in range(self.args.epoch):
-                for j in range(int(self.args.sample_n_step * self.args.num_agent/self.args.mini_batch_size)):
+                for j in range(int(self.args.batch_size/self.args.mini_batch_size)):
                     learner_stats_ij = self.stats['worker_stats'][i][j]['learner_stats']
                     mbvals.append([learner_stats_ij[val_name] for val_name in vals_name])
                     mbwlists.append([np.array(learner_stats_ij[list_name]) for list_name in lists_name])
@@ -86,12 +86,12 @@ class AllReduceOptimizer(object):
                     tf.summary.histogram('optimizer/{}'.format(list_name), hist, step=self.num_updated_steps)
                 self.writer.flush()
 
-        if self.num_updated_steps % self.args.eval_interval == 0:
-            self.evaluator.set_weights(self.local_worker.get_weights())
-            self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
-            self.evaluator.run_evaluation(self.num_updated_steps)
+        # if self.num_updated_steps % self.args.eval_interval == 0:
+        #     self.evaluator.set_weights(self.local_worker.get_weights())
+        #     self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
+        #     self.evaluator.run_evaluation(self.num_updated_steps)
         if self.num_updated_steps % self.args.save_interval == 0:
             self.local_worker.save_weights(self.model_dir, self.num_updated_steps)
             self.local_worker.save_ppc_params(self.model_dir)
-        self.num_sampled_steps += self.args.sample_n_step * self.args.num_agent
+        self.num_sampled_steps += self.args.batch_size
         self.num_updated_steps += 1
