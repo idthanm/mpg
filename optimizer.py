@@ -16,10 +16,12 @@ logger.setLevel(logging.INFO)
 
 
 class AllReduceOptimizer(object):
-    def __init__(self, local_worker, evaluator, args):
+    def __init__(self, workers, evaluator, args):
         self.args = args
         self.evaluator = evaluator
-        self.local_worker = local_worker
+        self.workers = workers
+        self.local_worker = self.workers['local_worker']
+        self.sync_remote_workers()
         self.num_sampled_steps = 0
         self.num_updated_steps = 0
         self.log_dir = self.args.log_dir
@@ -44,15 +46,21 @@ class AllReduceOptimizer(object):
         logger.info('begin the {}-th optimizing step'.format(self.num_updated_steps))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
         with self.sampling_timer:
-            self.local_worker.put_data_into_learner(*self.local_worker.sample())
+            for worker in self.workers['remote_workers']:
+                batch_data, epinfos = ray.get(worker.sample.remote())
+                worker.put_data_into_learner.remote(batch_data, epinfos)
         with self.optimizing_timer:
             worker_stats = []
             for i in range(self.args.epoch):
                 stats_list_per_epoch = []
                 for minibatch_index in range(int(self.args.batch_size / self.args.mini_batch_size)):
-                    minibatch_grads = self.local_worker.compute_gradient_over_ith_minibatch(minibatch_index)
-                    stats_list_per_epoch.append(self.local_worker.get_stats())
-                    self.local_worker.apply_gradients(self.num_updated_steps, minibatch_grads)
+                    minibatch_grad_futures = [worker.compute_gradient_over_ith_minibatch.remote(minibatch_index)
+                                              for worker in self.workers['remote_workers']]
+                    minibatch_grads = ray.get(minibatch_grad_futures)
+                    stats_list_per_epoch.append(ray.get(self.workers['remote_workers'][0].get_stats.remote()))
+                    final_grads = np.array(minibatch_grads).mean(axis=0)
+                    self.local_worker.apply_gradients(self.num_updated_steps, final_grads)
+                    self.sync_remote_workers()
                 worker_stats.append(stats_list_per_epoch)
 
         self.stats.update({'worker_stats': worker_stats,
@@ -86,12 +94,17 @@ class AllReduceOptimizer(object):
                     tf.summary.histogram('optimizer/{}'.format(list_name), hist, step=self.num_updated_steps)
                 self.writer.flush()
 
-        # if self.num_updated_steps % self.args.eval_interval == 0:
-        #     self.evaluator.set_weights(self.local_worker.get_weights())
-        #     self.evaluator.set_ppc_params(self.local_worker.get_ppc_params())
-        #     self.evaluator.run_evaluation(self.num_updated_steps)
+        if self.num_updated_steps % self.args.eval_interval == 0:
+            self.evaluator.set_weights.remote(self.local_worker.get_weights())
+            self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+            self.evaluator.run_evaluation.remote(self.num_updated_steps)
         if self.num_updated_steps % self.args.save_interval == 0:
             self.local_worker.save_weights(self.model_dir, self.num_updated_steps)
-            self.local_worker.save_ppc_params(self.model_dir)
-        self.num_sampled_steps += self.args.batch_size
+            self.workers['remote_workers'][0].save_ppc_params.remote(self.model_dir)
+        self.num_sampled_steps += self.args.batch_size * len(self.workers['remote_workers'])
         self.num_updated_steps += 1
+
+    def sync_remote_workers(self):
+        weights = ray.put(self.workers['local_worker'].get_weights())
+        for e in self.workers['remote_workers']:
+            e.set_weights.remote(weights)

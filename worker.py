@@ -97,9 +97,9 @@ class OnPolicyWorker(object):
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, neglogp[0].numpy()))
             self.obs = self.env.reset() if self.done else obs_tp1
-            maybeepinfos = info.get('episode')
+            maybeepinfo = info.get('episode')
             # self.env.render()
-            if maybeepinfos: epinfos.extend(maybeepinfos)
+            if maybeepinfo: epinfos.append(maybeepinfo)
 
         return batch_data, epinfos
 

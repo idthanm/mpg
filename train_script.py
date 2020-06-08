@@ -1,3 +1,4 @@
+import ray
 from policy import PolicyWithQs
 from optimizer import AllReduceOptimizer
 from mixed_pg_learner import MixedPGLearner
@@ -90,6 +91,7 @@ def built_mixedpg_parser():
 def main():
     args = built_mixedpg_parser()
     logger.info('begin training mixed pg agents with parameter {}'.format(str(args)))
+    ray.init(redis_max_memory=200*1024*1024, object_store_memory=200*1024*1024)
     os.makedirs(args.result_dir)
     with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
         json.dump(vars(args), f, ensure_ascii=False, indent=4)
