@@ -3,11 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -341,7 +336,14 @@
       <option name="project" value="LOCAL" />
       <updated>1591653744329</updated>
     </task>
-    <option name="localTasksCounter" value="20" />
+    <task id="LOCAL-00020" summary="debug">
+      <created>1591693968569</created>
+      <option name="number" value="00020" />
+      <option name="presentableId" value="LOCAL-00020" />
+      <option name="project" value="LOCAL" />
+      <updated>1591693968569</updated>
+    </task>
+    <option name="localTasksCounter" value="21" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -358,7 +360,8 @@
     <MESSAGE value="modify model, evaluator, a not bad version for mixed pg" />
     <MESSAGE value="first runnable for single process" />
     <MESSAGE value="first runnable for multiprocess" />
-    <option name="LAST_COMMIT_MESSAGE" value="first runnable for multiprocess" />
+    <MESSAGE value="debug" />
+    <option name="LAST_COMMIT_MESSAGE" value="debug" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
@@ -369,18 +372,18 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="511" y="253" key="#com.intellij.fileTypes.FileTypeChooser/65.24.1535.876@65.24.1535.876" timestamp="1587533190906" />
-    <state x="547" y="32" key="CommitChangelistDialog2" timestamp="1591693936124">
+    <state x="547" y="32" key="CommitChangelistDialog2" timestamp="1591693968481">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="547" y="32" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1591693936124" />
+    <state x="547" y="32" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1591693968481" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="1533" height="440" key="DebuggerActiveHint/65.24.1535.876@65.24.1535.876" timestamp="1586682263280" />
-    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog" timestamp="1591693927741">
+    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog" timestamp="1591693996242">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1591693927741" />
+    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1591693996242" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -453,10 +456,10 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="479" y="183" width="707" height="702" key="find.popup/65.24.1535.876@65.24.1535.876" timestamp="1586229242681" />
-    <state x="555" y="161" key="git4idea.branch.GitSmartOperationDialog" timestamp="1586683455963">
+    <state x="555" y="161" key="git4idea.branch.GitSmartOperationDialog" timestamp="1591694271144">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="555" y="161" key="git4idea.branch.GitSmartOperationDialog/65.24.1535.876@65.24.1535.876" timestamp="1586683455963" />
+    <state x="555" y="161" key="git4idea.branch.GitSmartOperationDialog/65.24.1535.876@65.24.1535.876" timestamp="1591694271144" />
     <state x="495" y="191" width="672" height="678" key="search.everywhere.popup" timestamp="1591463456577">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
