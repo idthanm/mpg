@@ -104,7 +104,7 @@ class Evaluator(object):
                                 average_len=average_len))
         logger.info(n_info_dict)
         with self.writer.as_default():
-            for key, val in n_info_dict:
+            for key, val in n_info_dict.items():
                 self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
 
             self.writer.flush()

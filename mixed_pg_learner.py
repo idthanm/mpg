@@ -89,12 +89,18 @@ class MixedPGLearner(object):
         self.reduced_num_minibatch = 1
         self.w_list_old = 1/len(self.num_rollout_list_for_policy_update)*np.ones(len(self.num_rollout_list_for_policy_update))
         assert self.args.mini_batch_size % self.reduced_num_minibatch == 0
+        self.epinfobuf = deque(maxlen=100)
 
     def get_stats(self):
         return self.stats
 
     def get_batch_data(self, batch_data, epinfos):
         self.batch_data = self.post_processing(batch_data)
+        self.epinfobuf.extend(epinfos)
+        eprewmean = safemean([epinfo['r'] for epinfo in self.epinfobuf])
+        eplenmean = safemean([epinfo['l'] for epinfo in self.epinfobuf])
+        self.stats.update(dict(eprewmean=eprewmean,
+                               eplenmean=eplenmean))
         batch_advs, batch_tdlambda_returns = self.compute_advantage()
 
         batch_mc = self.compute_mc_estimate()

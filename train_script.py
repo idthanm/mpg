@@ -26,20 +26,22 @@ def built_mixedpg_parser():
     parser.add_argument("--alg_name", default='Mixed_PG')
     parser.add_argument("--env_id", default='CrossroadEnd2end-v0')
     parser.add_argument('--off_policy', default=False, action='store_true')
-    parser.add_argument('--num_workers', type=int, default=1)
+    parser.add_argument('--num_workers', type=int, default=3)
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=512)
+    parser.add_argument("--mini_batch_size", type=int, default=64)
+    parser.add_argument("--epoch", type=int, default=5)
+
     parser.add_argument('--training_task', type=str, default='left')
 
     parser.add_argument('--num_future_data', type=int, default=5)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--model_based', default=True)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[20])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[20])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[5])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[5])
     parser.add_argument('--deriv_interval_policy', default=True)
 
-    parser.add_argument("--mini_batch_size", type=int, default=64)
     parser.add_argument("--policy_lr_schedule", type=list,
                         default=[3e-4, 20000, 3e-6])
     parser.add_argument("--value_lr_schedule", type=list,
@@ -49,7 +51,6 @@ def built_mixedpg_parser():
 
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.98)
-    parser.add_argument("--epoch", type=int, default=5)
     parser.add_argument("--eval_interval", type=int, default=5)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)

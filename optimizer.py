@@ -10,6 +10,7 @@ from utils.task_pool import TaskPool
 import random
 from utils.misc import safemean
 from mixed_pg_learner import TimerStat
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -46,12 +47,14 @@ class AllReduceOptimizer(object):
         logger.info('begin the {}-th optimizing step'.format(self.num_updated_steps))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
         with self.sampling_timer:
+            logger.info('sampling phase')
             for worker in self.workers['remote_workers']:
                 batch_data, epinfos = ray.get(worker.sample.remote())
                 worker.put_data_into_learner.remote(batch_data, epinfos)
         with self.optimizing_timer:
             worker_stats = []
-            for i in range(self.args.epoch):
+            logger.info('optimizing phase')
+            for _ in tqdm(range(self.args.epoch), desc='epoch', ncols=80):
                 stats_list_per_epoch = []
                 for minibatch_index in range(int(self.args.batch_size / self.args.mini_batch_size)):
                     minibatch_grad_futures = [worker.compute_gradient_over_ith_minibatch.remote(minibatch_index)
@@ -70,7 +73,7 @@ class AllReduceOptimizer(object):
         if self.num_updated_steps % self.args.log_interval == 0:
             mbvals = []
             mbwlists = []
-            vals_name = ['value_mean', 'q_loss', 'policy_gradient_norm', 'q_gradient_norm', 'pg_time', 'q_timer']
+            vals_name = ['eplenmean', 'eprewmean', 'value_mean', 'q_loss', 'policy_gradient_norm', 'q_gradient_norm', 'pg_time', 'q_timer']
             lists_name = ['w_var_list', 'w_heur_bias_list', 'w_list_new', 'w_list']
             logger.info('sampling time: {}, optimizing time: {}'.format(self.stats['sampling_time'],
                                                                         self.stats['optimizing_time']))

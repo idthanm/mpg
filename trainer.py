@@ -13,7 +13,7 @@ class Trainer(object):
 
         self.evaluator = ray.remote(num_cpus=1)(Evaluator).remote(policy_cls, self.args.env_id, self.args)
         self.local_worker = OnPolicyWorker(policy_cls, learner_cls, self.args.env_id, self.args, 0)
-        self.remote_workers = [ray.remote(num_cpus=3)(OnPolicyWorker).remote(policy_cls,
+        self.remote_workers = [ray.remote(num_cpus=1)(OnPolicyWorker).remote(policy_cls,
                                                                              learner_cls,
                                                                              self.args.env_id,
                                                                              self.args,
@@ -26,11 +26,11 @@ class Trainer(object):
 
     def load_weights(self, load_dir, iteration):
         self.local_worker.load_weights(load_dir, iteration)
-        # self.evaluator.load_weights(load_dir, iteration)
+        self.evaluator.load_weights(load_dir, iteration)
 
     def load_ppc_params(self, load_dir):
         self.local_worker.load_ppc_params(load_dir)
-        # self.evaluator.load_ppc_params(load_dir)
+        self.evaluator.load_ppc_params(load_dir)
 
     def train(self):
         logger.info('training beginning')

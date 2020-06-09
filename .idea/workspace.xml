@@ -3,10 +3,11 @@
   <component name="ChangeListManager">
     <list default="true" id="6cfbf2ab-3f8c-4c9b-ae41-f446e60f154e" name="Default Changelist" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/evaluator.py" beforeDir="false" afterPath="$PROJECT_DIR$/evaluator.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/mixed_pg_learner.py" beforeDir="false" afterPath="$PROJECT_DIR$/mixed_pg_learner.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/optimizer.py" beforeDir="false" afterPath="$PROJECT_DIR$/optimizer.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/train_script.py" beforeDir="false" afterPath="$PROJECT_DIR$/train_script.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/trainer.py" beforeDir="false" afterPath="$PROJECT_DIR$/trainer.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/worker.py" beforeDir="false" afterPath="$PROJECT_DIR$/worker.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -333,7 +334,14 @@
       <option name="project" value="LOCAL" />
       <updated>1591646925152</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="first runnable for multiprocess">
+      <created>1591653744329</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1591653744329</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -349,7 +357,8 @@
     <MESSAGE value="modify action representation, modify devi_v coefficient" />
     <MESSAGE value="modify model, evaluator, a not bad version for mixed pg" />
     <MESSAGE value="first runnable for single process" />
-    <option name="LAST_COMMIT_MESSAGE" value="first runnable for single process" />
+    <MESSAGE value="first runnable for multiprocess" />
+    <option name="LAST_COMMIT_MESSAGE" value="first runnable for multiprocess" />
   </component>
   <component name="WindowStateProjectService">
     <state x="500" y="216" key="#com.intellij.execution.impl.EditConfigurationsDialog" timestamp="1585479707882">
@@ -360,18 +369,18 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="511" y="253" key="#com.intellij.fileTypes.FileTypeChooser/65.24.1535.876@65.24.1535.876" timestamp="1587533190906" />
-    <state x="408" y="38" key="CommitChangelistDialog2" timestamp="1591646925080">
+    <state x="547" y="32" key="CommitChangelistDialog2" timestamp="1591693936124">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="408" y="38" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1591646925080" />
+    <state x="547" y="32" key="CommitChangelistDialog2/65.24.1535.876@65.24.1535.876" timestamp="1591693936124" />
     <state width="1533" height="440" key="DebuggerActiveHint" timestamp="1586682263280">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state width="1533" height="440" key="DebuggerActiveHint/65.24.1535.876@65.24.1535.876" timestamp="1586682263280" />
-    <state x="235" y="72" width="1226" height="731" maximized="true" key="DiffContextDialog" timestamp="1591652941222">
+    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog" timestamp="1591693927741">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state x="235" y="72" width="1226" height="731" maximized="true" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1591652941222" />
+    <state x="230" y="145" width="1226" height="701" key="DiffContextDialog/65.24.1535.876@65.24.1535.876" timestamp="1591693927741" />
     <state x="369" y="314" key="EnvironmentVariablesDialog" timestamp="1585479705393">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -380,22 +389,22 @@
       <screen x="65" y="24" width="1535" height="876" />
     </state>
     <state x="620" y="205" key="FileChooserDialogImpl/65.24.1535.876@65.24.1535.876" timestamp="1591647356817" />
-    <state width="1512" height="224" key="GridCell.Tab.0.bottom" timestamp="1591649220402">
+    <state width="1039" height="381" key="GridCell.Tab.0.bottom" timestamp="1591658174643">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="224" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1591649220402" />
-    <state width="1512" height="224" key="GridCell.Tab.0.center" timestamp="1591649220402">
+    <state width="1039" height="381" key="GridCell.Tab.0.bottom/65.24.1535.876@65.24.1535.876" timestamp="1591658174643" />
+    <state width="1039" height="381" key="GridCell.Tab.0.center" timestamp="1591658174643">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="224" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1591649220402" />
-    <state width="1512" height="224" key="GridCell.Tab.0.left" timestamp="1591649220401">
+    <state width="1039" height="381" key="GridCell.Tab.0.center/65.24.1535.876@65.24.1535.876" timestamp="1591658174643" />
+    <state width="1039" height="381" key="GridCell.Tab.0.left" timestamp="1591658174642">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="224" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1591649220401" />
-    <state width="1512" height="224" key="GridCell.Tab.0.right" timestamp="1591649220402">
+    <state width="1039" height="381" key="GridCell.Tab.0.left/65.24.1535.876@65.24.1535.876" timestamp="1591658174642" />
+    <state width="1039" height="381" key="GridCell.Tab.0.right" timestamp="1591658174643">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
-    <state width="1512" height="224" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1591649220402" />
+    <state width="1039" height="381" key="GridCell.Tab.0.right/65.24.1535.876@65.24.1535.876" timestamp="1591658174643" />
     <state width="1512" height="216" key="GridCell.Tab.1.bottom" timestamp="1591642730386">
       <screen x="65" y="24" width="1535" height="876" />
     </state>
@@ -463,27 +472,27 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>317</line>
+          <line>323</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>371</line>
+          <line>377</line>
           <option name="timeStamp" value="22" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>304</line>
+          <line>310</line>
           <option name="timeStamp" value="24" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>309</line>
+          <line>315</line>
           <option name="timeStamp" value="25" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>361</line>
+          <line>367</line>
           <option name="timeStamp" value="26" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -493,22 +502,22 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>357</line>
+          <line>363</line>
           <option name="timeStamp" value="33" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>250</line>
+          <line>256</line>
           <option name="timeStamp" value="34" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>270</line>
+          <line>276</line>
           <option name="timeStamp" value="35" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/mixed_pg_learner.py</url>
-          <line>276</line>
+          <line>282</line>
           <option name="timeStamp" value="37" />
         </line-breakpoint>
       </breakpoints>
