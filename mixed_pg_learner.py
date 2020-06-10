@@ -1,36 +1,24 @@
-import numpy as np
-import gym
-from gym.envs.user_defined.toyota_env.dynamics_and_models import EnvironmentModel
-from preprocessor import Preprocessor
-import time
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: mixed_pg_learner.py
+# =====================================
+
 import logging
+import time
 from collections import deque
+
+import numpy as np
+from gym.envs.user_defined.toyota_env.dynamics_and_models import EnvironmentModel
+
+from preprocessor import Preprocessor
 from utils.misc import safemean
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-
-# logger.setLevel(logging.INFO)
-
-# def judge_is_nan(list_of_np_or_tensor):
-#     for m in list_of_np_or_tensor:
-#         if hasattr(m, 'numpy'):
-#             if np.any(np.isnan(m.numpy())):
-#                 print(list_of_np_or_tensor)
-#                 raise ValueError
-#         else:
-#             if np.any(np.isnan(m)):
-#                 print(list_of_np_or_tensor)
-#                 raise ValueError
-#
-#
-# def judge_less_than(list_of_np_or_tensor, thres=0.001):
-#     for m in list_of_np_or_tensor:
-#         if hasattr(m, 'numpy'):
-#             assert not np.all(m.numpy() < thres)
-#         else:
-#             assert not np.all(m < thres)
 
 
 class TimerStat:
@@ -284,7 +272,7 @@ class MixedPGLearner(object):
         value_mean = self.tf.reduce_mean(all_model_returns[0])
         return selected_model_returns_flatten, minus_selected_reduced_model_returns_flatten, value_mean
 
-    # @tf.function
+    @tf.function
     def q_forward_and_backward(self, mb_obs, mb_actions, mb_targets):
         if self.args.model_based:
             processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
@@ -315,7 +303,7 @@ class MixedPGLearner(object):
                 model_bias_list.append(self.tf.reduce_mean(self.tf.abs(model_target_i-mb_targets)))
             return model_targets, q_gradient, q_loss, model_bias_list
 
-    # @tf.function
+    @tf.function
     def policy_forward_and_backward(self, mb_obs):
         with self.tf.GradientTape(persistent=True) as tape:
             model_returns, minus_reduced_model_returns, value_mean = self.model_rollout_for_policy_update(mb_obs)

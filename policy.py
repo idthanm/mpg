@@ -1,8 +1,17 @@
-from model import MLPNet
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: policy.py
+# =====================================
+
 import numpy as np
 from gym import spaces
-from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.optimizers.schedules import PolynomialDecay
+
+from model import MLPNet
 
 
 class PolicyWithQs(object):
@@ -229,7 +238,6 @@ def test_policy_with_Qs():
 def test_mlp():
     import tensorflow as tf
     import numpy as np
-    from model import MLPNet
     policy = tf.keras.Sequential([tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
                                   tf.keras.layers.Dense(128, input_shape=(3,), activation='elu'),
                                   tf.keras.layers.Dense(1, activation='elu')])

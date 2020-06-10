@@ -1,7 +1,18 @@
-import gym
-import numpy as np
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: evaluator.py
+# =====================================
+
 import logging
 import os
+
+import gym
+import numpy as np
+
 from preprocessor import Preprocessor
 
 logger = logging.getLogger(__name__)

@@ -1,7 +1,16 @@
-from tensorflow.keras.layers import Dense
-from tensorflow.keras import Model, Sequential
-from tensorflow import Variable
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: model.py
+# =====================================
+
 import tensorflow as tf
+from tensorflow import Variable
+from tensorflow.keras import Model, Sequential
+from tensorflow.keras.layers import Dense
 
 
 class MLPNet(Model):
@@ -20,8 +29,6 @@ class MLPNet(Model):
         return x
 
 def test_attrib():
-    import numpy as np
-
     a = Variable(0, name='d')
 
     p = MLPNet(2, 2, 128, 1, name='ttt')

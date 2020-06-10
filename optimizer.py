@@ -1,16 +1,22 @@
-import ray
-import numpy as np
-import tensorflow as tf
-import os
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+# =====================================
+# @Time    : 2020/6/10
+# @Author  : Yang Guan (Tsinghua Univ.)
+# @FileName: optimizer.py
+# =====================================
+
 import logging
-import threading
-import queue
+import os
 import pprint
-from utils.task_pool import TaskPool
-import random
-from utils.misc import safemean
-from mixed_pg_learner import TimerStat
+
+import numpy as np
+import ray
+import tensorflow as tf
 from tqdm import tqdm
+
+from mixed_pg_learner import TimerStat
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
