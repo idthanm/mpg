@@ -64,7 +64,7 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[5])
     parser.add_argument('--deriv_interval_policy', default=True)
 
-    parser.add_argument('--max_buffer_size', type=int, default=1000000)
+    parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=1500)
     parser.add_argument('--replay_batch_size', type=int, default=64)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
