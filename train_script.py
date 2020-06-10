@@ -43,8 +43,8 @@ def built_offpolicy_mb_parser():
     parser.add_argument("--env_id", default='CrossroadEnd2end-v0')
     parser.add_argument('--off_policy', default=True, action='store_true')
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=1)
-    parser.add_argument('--num_buffers', type=int, default=1)
+    parser.add_argument('--num_learners', type=int, default=3)
+    parser.add_argument('--num_buffers', type=int, default=2)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
     parser.add_argument('--buffer_type', type=str, default='normal')
@@ -191,7 +191,7 @@ def built_parser(alg_name):
 def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
-    ray.init(redis_max_memory=200*1024*1024, object_store_memory=200*1024*1024)
+    ray.init(redis_max_memory=1024*1024*1024, object_store_memory=1024*1024*1024)
     os.makedirs(args.result_dir)
     with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
         json.dump(vars(args), f, ensure_ascii=False, indent=4)

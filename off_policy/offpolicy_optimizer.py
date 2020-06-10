@@ -162,7 +162,6 @@ class OffPolicyAsyncOptimizer(object):
 
         # learning
         for learner, objID in self.learn_tasks.completed():
-            print('i am here')
             grads = ray.get(objID)
             learner_stats = ray.get(learner.get_stats.remote())
             if self.args.buffer_type == 'priority':
