@@ -20,3 +20,16 @@ def random_choice_with_index(obj_list):
     random_index = random.choice(list(range(obj_len)))
     random_value = obj_list[random_index]
     return random_value, random_index
+
+
+def judge_is_nan(list_of_np_or_tensor):
+    for m in list_of_np_or_tensor:
+        if hasattr(m, 'numpy'):
+            if np.any(np.isnan(m.numpy())):
+                print(list_of_np_or_tensor)
+                raise ValueError
+        else:
+            if np.any(np.isnan(m)):
+                print(list_of_np_or_tensor)
+                raise ValueError
+

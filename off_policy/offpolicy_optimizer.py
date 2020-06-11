@@ -27,12 +27,13 @@ class UpdateThread(threading.Thread):
     """Background thread that updates the local model from gradient list.
     """
 
-    def __init__(self, workers, evaluator, args):
+    def __init__(self, workers, evaluator, args, optimizer_stats):
         threading.Thread.__init__(self)
         self.args = args
         self.workers = workers
         self.local_worker = workers['local_worker']
         self.evaluator = evaluator
+        self.optimizer_stats = optimizer_stats
         self.inqueue = queue.Queue(maxsize=100)
         self.stopped = False
         self.log_dir = self.args.log_dir
@@ -50,19 +51,19 @@ class UpdateThread(threading.Thread):
 
     def step(self):
         if not self.inqueue.empty():
-            logger.info('grads queue size is {}'.format(self.inqueue.qsize()))
+            self.optimizer_stats.update({'update_queue_size': self.inqueue.qsize()})
+
             # updating
             grads, learner_stats = self.inqueue.get()
             self.local_worker.apply_gradients(self.iteration, grads)
 
             if self.iteration % self.args.log_interval == 0:
-                vals_name = ['iteration', 'policy_loss', 'q_loss', 'value_mean', 'policy_gradient_norm',
-                             'q_gradient_norm', 'pg_time', 'q_timer']
-                logger.info(learner_stats)
                 with self.writer.as_default():
-                    for val_name in vals_name:
-                        val = learner_stats[val_name]
-                        tf.summary.scalar('optimizer/{}'.format(val_name), val, step=self.iteration)
+                    for key, val in learner_stats.items():
+                        if key not in ['td_error', 'rb_index', 'indexes']:
+                            tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
+                    for key, val in self.optimizer_stats.items():
+                        tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                     self.writer.flush()
 
             # evaluation
@@ -94,21 +95,24 @@ class OffPolicyAsyncOptimizer(object):
         self.learners = learners
         self.replay_buffers = replay_buffers
         self.evaluator = evaluator
-        self.update_thread = UpdateThread(self.workers, self.evaluator, self.args)
+        self.num_sampled_steps = 0
+        self.num_updated_steps = 0
+        self.optimizer_steps = 0
+        self.stats = dict(num_sampled_steps=self.num_sampled_steps,
+                          num_updated_steps=self.num_updated_steps,
+                          optimizer_steps=self.optimizer_steps,
+                          update_queue_size=0)
+        self.update_thread = UpdateThread(self.workers, self.evaluator, self.args,
+                                          self.stats)
         self.update_thread.start()
         self.max_weight_sync_delay = self.args.max_weight_sync_delay
         self.steps_since_update = {}
-        self.num_sampled_steps = 0
-        self.num_updated_steps = 0
         self.log_dir = self.args.log_dir
         self.model_dir = self.args.model_dir
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
-        self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
-        self.stats = {}
-
         self.sample_tasks = TaskPool()
         self._set_workers()
 
@@ -127,6 +131,12 @@ class OffPolicyAsyncOptimizer(object):
         self._set_learners()
         logger.info('Optimizer initialized')
 
+    def get_stats(self):
+        self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
+                               num_updated_steps=self.num_updated_steps,
+                               optimizer_steps=self.optimizer_steps))
+        return self.stats
+
     def _set_workers(self):
         weights = self.local_worker.get_weights()
         for worker in self.workers['remote_workers']:
@@ -144,8 +154,9 @@ class OffPolicyAsyncOptimizer(object):
             self.learn_tasks.add(learner, learner.compute_gradient.remote(self.local_worker.iteration))
 
     def step(self):
-        logger.info('updating {} in total'.format(self.num_updated_steps))
-        logger.info('sampling {} in total'.format(self.num_sampled_steps))
+        if self.optimizer_steps % 1000:
+            logger.info('updating {} in total'.format(self.num_updated_steps))
+            logger.info('sampling {} in total'.format(self.num_sampled_steps))
         assert self.update_thread.is_alive()
         assert len(self.workers['remote_workers']) > 0
 
@@ -176,6 +187,8 @@ class OffPolicyAsyncOptimizer(object):
             self.update_thread.inqueue.put([grads, learner_stats])
 
         self.num_updated_steps = self.update_thread.iteration
+        self.optimizer_steps += 1
+        self.get_stats()
 
     def stop(self):
         for r in self.workers['remote_workers']:

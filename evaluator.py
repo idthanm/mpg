@@ -70,14 +70,19 @@ class Evaluator(object):
                                               devi_y=info['devi_y'],
                                               devi_phi=info['devi_phi'],
                                               veh2road=info['veh2road'],
-                                              veh2veh=info['veh2veh']))
+                                              veh2veh=info['veh2veh'],
+                                              rew_alpha_f=info['rew_alpha_f'],
+                                              rew_alpha_r=info['rew_alpha_r'],
+                                              rew_r=info['rew_r']
+                                              ))
             self.env.render()
             reward_list.append(reward)
         self.env.close()
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
-        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y', 'devi_phi', 'veh2road', 'veh2veh']:
+        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y',
+                    'devi_phi', 'veh2road', 'veh2veh', 'rew_alpha_f', 'rew_alpha_r', 'rew_r']:
             info_key = list(map(lambda x: x[key], reward_info_dict_list))
             mean_key = sum(info_key) / len(info_key)
             info_dict.update({key: mean_key})
@@ -96,7 +101,8 @@ class Evaluator(object):
         average_return = sum(list_of_return) / len(list_of_return)
         average_len = sum(list_of_len) / len(list_of_len)
         n_info_dict = dict()
-        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y', 'devi_phi', 'veh2road', 'veh2veh']:
+        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y',
+                    'devi_phi', 'veh2road', 'veh2veh', 'rew_alpha_f', 'rew_alpha_r', 'rew_r']:
             info_key = list(map(lambda x: x[key], list_of_info_dict))
             mean_key = sum(info_key) / len(info_key)
             n_info_dict.update({key: mean_key})

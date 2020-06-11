@@ -34,7 +34,12 @@ class ReplayBuffer(object):
         self._next_idx = 0
         self.replay_starts = self.args.replay_starts
         self.replay_batch_size = self.args.replay_batch_size
+        self.stats = {}
         logger.info('Buffer initialized')
+
+    def get_stats(self):
+        self.stats.update(dict(storage=len(self._storage)))
+        return self.stats
 
     def __len__(self):
         return len(self._storage)

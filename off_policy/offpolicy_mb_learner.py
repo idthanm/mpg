@@ -267,13 +267,11 @@ class OffPolicyMBLearner(object):
             iteration=iteration,
             q_timer=self.q_gradient_timer.mean,
             pg_time=self.policy_gradient_timer.mean,
-            policy_loss=policy_loss,
+            policy_loss=policy_loss.numpy(),
             q_loss=q_loss.numpy(),
             value_mean=value_mean.numpy(),
             q_gradient_norm=q_gradient_norm.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
-            num_traj_rollout=self.M,
-            num_rollout_list=self.num_rollout_list_for_policy_update,
         ))
 
         gradient_tensor = q_gradient + policy_gradient  # q_gradient + final_policy_gradient

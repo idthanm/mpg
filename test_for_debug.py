@@ -170,6 +170,39 @@ def test_gym():
     a = 1
 
 
+import threading
+class UpdateThread(threading.Thread):
+    """Background thread that updates the local model from gradient list.
+    """
+
+    def __init__(self, stats):
+        threading.Thread.__init__(self)
+        self.stats = stats
+        self.stopped = False
+
+    def run(self):
+        while not self.stopped:
+            self.step()
+
+    def step(self):
+        print(self.stats)
+
+
+def test_threading():
+    import time
+    stat = {'a':1}
+    thr = UpdateThread(stat)
+    thr.start()
+    for i in range(100000):
+        if i > 100:
+            stat = {'a': i}
+            print(i)
+            time.sleep(0.1)
+        if i > 40000:
+            thr.stopped = True
+            break
+
+
 if __name__ == '__main__':
-    test_gym()
+    test_threading()
 

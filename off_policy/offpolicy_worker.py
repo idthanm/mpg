@@ -13,6 +13,7 @@ import gym
 import numpy as np
 
 from preprocessor import Preprocessor
+from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -40,7 +41,13 @@ class OffPolicyWorker(object):
                                          gamma=self.args.gamma)
 
         self.iteration = 0
+        self.num_sample = 0
+        self.stats = {}
         logger.info('Worker initialized')
+
+    def get_stats(self):
+        self.stats.update(dict(num_sample=self.num_sample))
+        return self.stats
 
     def save_weights(self, save_dir, iteration):
         self.policy_with_value.save_weights(save_dir, iteration)
@@ -74,13 +81,16 @@ class OffPolicyWorker(object):
         batch_data = []
         for _ in range(self.batch_size):
             processed_obs = self.preprocessor.process_obs(self.obs)
+            judge_is_nan([processed_obs])
             action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+            judge_is_nan([action])
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done))
             self.obs = self.env.reset() if self.done else obs_tp1
             # self.env.render()
 
+        self.num_sample += len(batch_data)
         return batch_data
 
     def sample_with_count(self):

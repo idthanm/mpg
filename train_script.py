@@ -79,9 +79,9 @@ def built_offpolicy_mb_parser():
 
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.98)
-    parser.add_argument("--eval_interval", type=int, default=100)
-    parser.add_argument("--save_interval", type=int, default=100)
-    parser.add_argument("--log_interval", type=int, default=100)
+    parser.add_argument("--eval_interval", type=int, default=2000)
+    parser.add_argument("--save_interval", type=int, default=2000)
+    parser.add_argument("--log_interval", type=int, default=1)
 
     parser.add_argument('--Q_num', type=int, default=1)
     parser.add_argument('--delay_update', type=int, default=1)
