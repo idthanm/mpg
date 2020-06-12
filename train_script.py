@@ -53,7 +53,8 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
     parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--max_weight_sync_delay', type=int, default=1024)
+    parser.add_argument('--max_weight_sync_delay', type=int, default=300)
+    parser.add_argument('--grads_queue_size', type=int, default=5)
 
     parser.add_argument('--training_task', type=str, default='left')
 
@@ -80,6 +81,7 @@ def built_offpolicy_mb_parser():
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.98)
     parser.add_argument("--eval_interval", type=int, default=2000)
+    parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--save_interval", type=int, default=2000)
     parser.add_argument("--log_interval", type=int, default=1)
 

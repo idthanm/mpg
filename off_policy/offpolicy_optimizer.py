@@ -34,7 +34,7 @@ class UpdateThread(threading.Thread):
         self.local_worker = workers['local_worker']
         self.evaluator = evaluator
         self.optimizer_stats = optimizer_stats
-        self.inqueue = queue.Queue(maxsize=100)
+        self.inqueue = queue.Queue(maxsize=self.args.grads_queue_size)
         self.stopped = False
         self.log_dir = self.args.log_dir
         self.model_dir = self.args.model_dir

@@ -117,7 +117,7 @@ class Evaluator(object):
 
     def run_evaluation(self, iteration):
         self.iteration = iteration
-        average_return, average_len, n_info_dict = self.run_n_episode(5)
+        average_return, average_len, n_info_dict = self.run_n_episode(self.args.num_eval_episode)
         n_info_dict.update(dict(average_return=average_return,
                                 average_len=average_len))
         logger.info(n_info_dict)
