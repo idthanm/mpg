@@ -59,6 +59,7 @@ class Evaluator(object):
         reward_info_dict_list = []
         done = 0
         obs = self.env.reset()
+        self.env.render()
         while not done:
             processed_obs = self.preprocessor.tf_process_obses(obs)
             action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])

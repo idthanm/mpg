@@ -58,6 +58,9 @@ class UpdateThread(threading.Thread):
             self.local_worker.apply_gradients(self.iteration, grads)
 
             if self.iteration % self.args.log_interval == 0:
+                if self.iteration % (100*self.args.log_interval) == 0:
+                    logger.info('updating {} in total'.format(self.iteration))
+                    logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
                 with self.writer.as_default():
                     for key, val in learner_stats.items():
                         if key not in ['td_error', 'rb_index', 'indexes']:
@@ -154,9 +157,6 @@ class OffPolicyAsyncOptimizer(object):
             self.learn_tasks.add(learner, learner.compute_gradient.remote(self.local_worker.iteration))
 
     def step(self):
-        if self.optimizer_steps % 1000:
-            logger.info('updating {} in total'.format(self.num_updated_steps))
-            logger.info('sampling {} in total'.format(self.num_sampled_steps))
         assert self.update_thread.is_alive()
         assert len(self.workers['remote_workers']) > 0
 

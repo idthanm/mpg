@@ -83,7 +83,12 @@ class OffPolicyWorker(object):
             processed_obs = self.preprocessor.process_obs(self.obs)
             judge_is_nan([processed_obs])
             action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
-            judge_is_nan([action])
+            try:
+                judge_is_nan([action])
+            except ValueError:
+                print(processed_obs)
+                print(self.preprocessor.get_params())
+                raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
             batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done))
