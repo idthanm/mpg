@@ -83,7 +83,7 @@ class Preprocessor(object):
 
     def process_obs(self, obs):
         if self.obs_ptype == 'normalize':
-            self.ob_rms.update(obs)
+            self.ob_rms.update(np.array([obs]))
             obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obs
         elif self.obs_ptype == 'scale':
