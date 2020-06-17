@@ -42,8 +42,8 @@ def built_offpolicy_mb_parser():
     parser.add_argument("--alg_name", default='Offpolicy_MB')
     parser.add_argument("--env_id", default='CrossroadEnd2end-v0')
     parser.add_argument('--off_policy', default=True, action='store_true')
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=3)
+    parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=2)
     parser.add_argument('--num_buffers', type=int, default=2)
 
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
@@ -58,15 +58,15 @@ def built_offpolicy_mb_parser():
 
     parser.add_argument('--training_task', type=str, default='left')
 
-    parser.add_argument('--num_future_data', type=int, default=5)
+    parser.add_argument('--num_future_data', type=int, default=0)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--model_based', default=True)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[5])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[5])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[1])
     parser.add_argument('--deriv_interval_policy', default=True)
 
     parser.add_argument('--max_buffer_size', type=int, default=500000)
-    parser.add_argument('--replay_starts', type=int, default=1500)
+    parser.add_argument('--replay_starts', type=int, default=3000)
     parser.add_argument('--replay_batch_size', type=int, default=64)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
@@ -80,10 +80,12 @@ def built_offpolicy_mb_parser():
 
     parser.add_argument("--lam", type=float, default=0.95)
     parser.add_argument("--gamma", type=float, default=0.98)
-    parser.add_argument("--eval_interval", type=int, default=1500)
+    parser.add_argument("--eval_interval", type=int, default=3000)
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--save_interval", type=int, default=2000)
     parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument("--worker_log_interval", type=int, default=5)
+    parser.add_argument("--buffer_log_interval", type=int, default=100)
 
     parser.add_argument('--Q_num', type=int, default=1)
     parser.add_argument('--delay_update', type=int, default=1)

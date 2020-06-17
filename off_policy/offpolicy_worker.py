@@ -42,11 +42,14 @@ class OffPolicyWorker(object):
 
         self.iteration = 0
         self.num_sample = 0
+        self.sample_times = 0
         self.stats = {}
         logger.info('Worker initialized')
 
     def get_stats(self):
-        self.stats.update(dict(num_sample=self.num_sample))
+        self.stats.update(dict(worker_id=self.worker_id,
+                               num_sample=self.num_sample,
+                               ppc_params=self.get_ppc_params()))
         return self.stats
 
     def save_weights(self, save_dir, iteration):
@@ -86,8 +89,11 @@ class OffPolicyWorker(object):
             try:
                 judge_is_nan([action])
             except ValueError:
-                print(processed_obs)
-                print(self.preprocessor.get_params())
+                print('processed_obs', processed_obs)
+                print('preprocessor_params', self.preprocessor.get_params())
+                print('policy_weights', self.policy_with_value.policy.trainable_weights)
+                action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+                judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
@@ -95,7 +101,11 @@ class OffPolicyWorker(object):
             self.obs = self.env.reset() if self.done else obs_tp1
             # self.env.render()
 
+        if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
+            logger.info('Worker_info: {}'.format(self.get_stats()))
+
         self.num_sample += len(batch_data)
+        self.sample_times += 1
         return batch_data
 
     def sample_with_count(self):

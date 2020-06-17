@@ -13,13 +13,13 @@ import random
 import numpy as np
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 from utils.segment_tree import SumSegmentTree, MinSegmentTree
 
 
 class ReplayBuffer(object):
-    def __init__(self, args):
+    def __init__(self, args, buffer_id):
         """Create Prioritized Replay buffer.
 
         Parameters
@@ -29,12 +29,14 @@ class ReplayBuffer(object):
           overflows the old memories are dropped.
         """
         self.args = args
+        self.buffer_id = buffer_id
         self._storage = []
         self._maxsize = self.args.max_buffer_size
         self._next_idx = 0
         self.replay_starts = self.args.replay_starts
         self.replay_batch_size = self.args.replay_batch_size
         self.stats = {}
+        self.replay_times = 0
         logger.info('Buffer initialized')
 
     def get_stats(self):
@@ -107,11 +109,15 @@ class ReplayBuffer(object):
     def replay(self):
         if len(self._storage) < self.replay_starts:
             return None
+        if self.buffer_id == 1 and self.replay_times % self.args.buffer_log_interval == 0:
+            logger.info('Buffer info: {}'.format(self.get_stats()))
+
+        self.replay_times += 1
         return self.sample(self.replay_batch_size)
 
 
 class PrioritizedReplayBuffer(ReplayBuffer):
-    def __init__(self, args):
+    def __init__(self, args, buffer_id):
         """Create Prioritized Replay buffer.
 
         Parameters
@@ -130,7 +136,7 @@ class PrioritizedReplayBuffer(ReplayBuffer):
         --------
         ReplayBuffer.__init__
         """
-        super(PrioritizedReplayBuffer, self).__init__(args)
+        super(PrioritizedReplayBuffer, self).__init__(args, buffer_id)
         assert self.args.alpha > 0
         self._alpha = args.replay_alpha
         self._beta = args.replay_beta

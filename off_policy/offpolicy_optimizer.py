@@ -18,6 +18,7 @@ import tensorflow as tf
 
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
+from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -55,6 +56,7 @@ class UpdateThread(threading.Thread):
 
             # updating
             grads, learner_stats = self.inqueue.get()
+            judge_is_nan(grads)
             self.local_worker.apply_gradients(self.iteration, grads)
 
             if self.iteration % self.args.log_interval == 0:
@@ -167,6 +169,7 @@ class OffPolicyAsyncOptimizer(object):
             self.num_sampled_steps += count
             self.steps_since_update[worker] += count
             if self.steps_since_update[worker] >= self.max_weight_sync_delay:
+                judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
                 worker.set_weights.remote(self.local_worker.get_weights())
                 self.steps_since_update[worker] = 0
             self.sample_tasks.add(worker, worker.sample_with_count.remote())
