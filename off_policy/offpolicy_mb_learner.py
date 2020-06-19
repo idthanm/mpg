@@ -205,8 +205,13 @@ class OffPolicyMBLearner(object):
             #        [[timen+traj0], [timen+traj1], ..., [timen+trajn]],
             #        ]
             all_model_returns = self.tf.reduce_mean(final, axis=1)
+        minus_selected_model_returns = []
         all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=-1)
-        policy_loss = -all_reduced_model_returns[self.num_rollout_list_for_policy_update[0]]
+        for num_rollout in self.num_rollout_list_for_policy_update:
+            minus_selected_model_returns.append(-all_reduced_model_returns[num_rollout])
+
+        policy_loss = self.tf.reduce_mean(minus_selected_model_returns)
+        # policy_loss = -all_reduced_model_returns[self.num_rollout_list_for_policy_update[0]]
 
         value_mean = self.tf.reduce_mean(all_model_returns[0])
         return policy_loss, value_mean

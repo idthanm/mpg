@@ -61,8 +61,8 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--num_future_data', type=int, default=0)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--model_based', default=True)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1])
-    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[1])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[1,5,9,13])
+    parser.add_argument('--num_rollout_list_for_q_estimation', type=list, default=[10])
     parser.add_argument('--deriv_interval_policy', default=True)
 
     parser.add_argument('--max_buffer_size', type=int, default=500000)
