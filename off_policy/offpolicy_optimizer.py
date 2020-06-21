@@ -56,7 +56,11 @@ class UpdateThread(threading.Thread):
 
             # updating
             grads, learner_stats = self.inqueue.get()
-            judge_is_nan(grads)
+            try:
+                judge_is_nan(grads)
+            except ValueError:
+                grads = [tf.zeros_like(grad) for grad in grads]
+                logger.info('Grad is nan!, zero it')
             self.local_worker.apply_gradients(self.iteration, grads)
 
             if self.iteration % self.args.log_interval == 0:
