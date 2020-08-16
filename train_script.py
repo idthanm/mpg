@@ -52,13 +52,13 @@ def built_offpolicy_mb_parser():
 
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=1000000)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=5)
 
     parser.add_argument('--training_task', type=str, default='left')
 
-    parser.add_argument('--num_future_data', type=int, default=2)
+    parser.add_argument('--num_future_data', type=int, default=0)
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--model_based', default=True)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[10])
