@@ -8,47 +8,16 @@
 # =====================================
 
 import logging
-import time
 
 import gym
 import numpy as np
 from gym.envs.user_defined.toyota_env.dynamics_and_models import EnvironmentModel
 
 from preprocessor import Preprocessor
+from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-
-class TimerStat:
-    def __init__(self, window_size=10):
-        self._window_size = window_size
-        self._samples = []
-        self._units_processed = []
-        self._start_time = None
-        self._total_time = 0.0
-        self.count = 0
-
-    def __enter__(self):
-        assert self._start_time is None, "concurrent updates not supported"
-        self._start_time = time.time()
-
-    def __exit__(self, type, value, tb):
-        assert self._start_time is not None
-        time_delta = time.time() - self._start_time
-        self.push(time_delta)
-        self._start_time = None
-
-    def push(self, time_delta):
-        self._samples.append(time_delta)
-        if len(self._samples) > self._window_size:
-            self._samples.pop(0)
-        self.count += 1
-        self._total_time += time_delta
-
-    @property
-    def mean(self):
-        return np.mean(self._samples)
 
 
 class OffPolicyMBLearner(object):

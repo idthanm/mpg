@@ -169,6 +169,23 @@ def test_gym():
     print(obs)
     a = 1
 
+def test_ray():
+    ray.init(redis_max_memory=100 * 1024 * 1024, object_store_memory=100 * 1024 * 1024)
+    import time
+
+    class evaluator(object):
+        def __init__(self):
+            self.a = (i for i in range(100))
+
+        def outa(self):
+            print(next(self.a))
+            time.sleep(5)
+
+    ev = ray.remote(num_cpus=1)(evaluator).remote()
+    for i in range(100000):
+        ev.outa.remote()
+    time.sleep(100)
+
 
 import threading
 class UpdateThread(threading.Thread):
@@ -202,7 +219,21 @@ def test_threading():
             thr.stopped = True
             break
 
+def test_stack():
+    from offpolicy_mb_learner import TimerStat
+    import time
+    a = TimerStat()
+
+    def out():
+        with a:
+            time.sleep(4)
+        print(a.mean)
+    for i in range(100):
+        with a:
+            out()
+
+
 
 if __name__ == '__main__':
-    test_threading()
+    test_stack()
 

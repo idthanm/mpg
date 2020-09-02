@@ -7,8 +7,10 @@
 # @FileName: misc.py
 # =====================================
 
-import numpy as np
 import random
+import time
+
+import numpy as np
 
 
 def safemean(xs):
@@ -32,4 +34,35 @@ def judge_is_nan(list_of_np_or_tensor):
             if np.any(np.isnan(m)):
                 print(list_of_np_or_tensor)
                 raise ValueError
+
+class TimerStat:
+    def __init__(self, window_size=10):
+        self._window_size = window_size
+        self._samples = []
+        self._units_processed = []
+        self._start_time = None
+        self._total_time = 0.0
+        self.count = 0
+
+    def __enter__(self):
+        assert self._start_time is None, "concurrent updates not supported"
+        self._start_time = time.time()
+
+    def __exit__(self, type, value, tb):
+        assert self._start_time is not None
+        time_delta = time.time() - self._start_time
+        self.push(time_delta)
+        self._start_time = None
+
+    def push(self, time_delta):
+        self._samples.append(time_delta)
+        if len(self._samples) > self._window_size:
+            self._samples.pop(0)
+        self.count += 1
+        self._total_time += time_delta
+
+    @property
+    def mean(self):
+        return np.mean(self._samples)
+
 

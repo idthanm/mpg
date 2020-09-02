@@ -71,10 +71,12 @@ def built_offpolicy_mb_parser():
 
     # evaluator
     parser.add_argument("--num_eval_episode", type=int, default=2)
+    parser.add_argument("--eval_log_interval", type=int, default=1)
+    parser.add_argument("--fixed_steps", type=int, default=50)
 
     # policy and model
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 20000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-4, 20000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 30000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-4, 30000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--delay_update', type=int, default=1)
@@ -100,7 +102,7 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=500)
+    parser.add_argument("--eval_interval", type=int, default=2000)
     parser.add_argument("--save_interval", type=int, default=2000)
     parser.add_argument("--log_interval", type=int, default=1)
 

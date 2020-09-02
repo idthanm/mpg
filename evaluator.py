@@ -12,6 +12,7 @@ import os
 
 import gym
 import numpy as np
+from utils.misc import TimerStat
 
 from preprocessor import Preprocessor
 
@@ -43,6 +44,12 @@ class Evaluator(object):
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
         self.stats = {}
+        self.eval_timer = TimerStat()
+        self.eval_times = 0
+
+    def get_stats(self):
+        self.stats.update(dict(eval_time=self.eval_timer.mean))
+        return self.stats
 
     def load_weights(self, load_dir, iteration):
         self.policy_with_value.load_weights(load_dir, iteration)
@@ -84,7 +91,9 @@ class Evaluator(object):
             info_key = list(map(lambda x: x[key], reward_info_dict_list))
             mean_key = sum(info_key) / len(info_key)
             info_dict.update({key: mean_key})
-        return episode_return, episode_len, info_dict
+        info_dict.update(dict(episode_return=episode_return,
+                              episode_len=episode_len))
+        return info_dict
 
     def run_n_episode(self, n):
         list_of_return = []
@@ -92,18 +101,14 @@ class Evaluator(object):
         list_of_info_dict = []
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))
-            episode_return, episode_len, info_dict = self.run_an_episode(50)
-            list_of_return.append(episode_return)
-            list_of_len.append(episode_len)
+            info_dict = self.run_an_episode(self.args.fixed_steps)
             list_of_info_dict.append(info_dict)
-        average_return = sum(list_of_return) / len(list_of_return)
-        average_len = sum(list_of_len) / len(list_of_len)
         n_info_dict = dict()
         for key in list_of_info_dict[0].keys():
             info_key = list(map(lambda x: x[key], list_of_info_dict))
             mean_key = sum(info_key) / len(info_key)
             n_info_dict.update({key: mean_key})
-        return average_return, average_len, n_info_dict
+        return n_info_dict
 
     def set_weights(self, weights):
         self.policy_with_value.set_weights(weights)
@@ -112,16 +117,18 @@ class Evaluator(object):
         self.preprocessor.set_params(params)
 
     def run_evaluation(self, iteration):
-        self.iteration = iteration
-        average_return, average_len, n_info_dict = self.run_n_episode(self.args.num_eval_episode)
-        n_info_dict.update(dict(average_return=average_return,
-                                average_len=average_len))
-        logger.info(n_info_dict)
-        with self.writer.as_default():
-            for key, val in n_info_dict.items():
-                self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
-
-            self.writer.flush()
+        with self.eval_timer:
+            self.iteration = iteration
+            n_info_dict = self.run_n_episode(self.args.num_eval_episode)
+            with self.writer.as_default():
+                for key, val in n_info_dict.items():
+                    self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
+                for key, val in self.get_stats().items():
+                    self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
+                self.writer.flush()
+        if self.eval_times % self.args.eval_log_interval == 0:
+            logger.info('Evaluator_info: {}, {}'.format(self.get_stats(),n_info_dict))
+        self.eval_times += 1
 
 
 def test_trained_model(model_dir, ppc_params_dir, iteration):

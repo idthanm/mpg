@@ -12,13 +12,14 @@ import os
 import queue
 import random
 import threading
+import time
 
 import ray
 import tensorflow as tf
 
+from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
-from utils.misc import judge_is_nan
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -44,53 +45,58 @@ class UpdateThread(threading.Thread):
         if not os.path.exists(self.model_dir):
             os.makedirs(self.model_dir)
         self.iteration = 0
+        self.update_timer = TimerStat()
+        with self.update_timer:
+            time.sleep(0.1)
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
 
     def run(self):
         while not self.stopped:
-            self.step()
+            if not self.inqueue.empty():
+                with self.update_timer:
+                    self.step()
 
     def step(self):
-        if not self.inqueue.empty():
-            self.optimizer_stats.update({'update_queue_size': self.inqueue.qsize()})
+        self.optimizer_stats.update({'update_queue_size': self.inqueue.qsize()})
+        self.optimizer_stats.update({'update_time': self.update_timer.mean})
 
-            # updating
-            grads, learner_stats = self.inqueue.get()
-            try:
-                judge_is_nan(grads)
-            except ValueError:
-                grads = [tf.zeros_like(grad) for grad in grads]
-                logger.info('Grad is nan!, zero it')
-            self.local_worker.apply_gradients(self.iteration, grads)
+        # updating
+        grads, learner_stats = self.inqueue.get()
+        try:
+            judge_is_nan(grads)
+        except ValueError:
+            grads = [tf.zeros_like(grad) for grad in grads]
+            logger.info('Grad is nan!, zero it')
+        self.local_worker.apply_gradients(self.iteration, grads)
 
-            if self.iteration % self.args.log_interval == 0:
-                if self.iteration % (100*self.args.log_interval) == 0:
-                    logger.info('updating {} in total'.format(self.iteration))
-                    logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
-                with self.writer.as_default():
-                    for key, val in learner_stats.items():
-                        if not isinstance(val, list):
-                            tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
-                        else:
-                            assert isinstance(val, list)
-                            for i, v in enumerate(val):
-                                tf.summary.scalar('optimizer/{}/{}'.format(key, i), v, step=self.iteration)
-                    for key, val in self.optimizer_stats.items():
+        if self.iteration % self.args.log_interval == 0:
+            if self.iteration % (100*self.args.log_interval) == 0:
+                logger.info('updating {} in total'.format(self.iteration))
+                logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
+            with self.writer.as_default():
+                for key, val in learner_stats.items():
+                    if not isinstance(val, list):
                         tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
-                    self.writer.flush()
+                    else:
+                        assert isinstance(val, list)
+                        for i, v in enumerate(val):
+                            tf.summary.scalar('optimizer/{}/{}'.format(key, i), v, step=self.iteration)
+                for key, val in self.optimizer_stats.items():
+                    tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
+                self.writer.flush()
 
-            # evaluation
-            if self.iteration % self.args.eval_interval == 0:
-                self.evaluator.set_weights.remote(self.local_worker.get_weights())
-                self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
-                self.evaluator.run_evaluation.remote(self.iteration)
+        # evaluation
+        if self.iteration % self.args.eval_interval == 0:
+            self.evaluator.set_weights.remote(self.local_worker.get_weights())
+            self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+            self.evaluator.run_evaluation.remote(self.iteration)
 
-            # save
-            if self.iteration % self.args.save_interval == 0:
-                self.local_worker.save_weights(self.model_dir, self.iteration)
-                self.workers['remote_workers'][0].save_ppc_params.remote(self.model_dir)
+        # save
+        if self.iteration % self.args.save_interval == 0:
+            self.local_worker.save_weights(self.model_dir, self.iteration)
+            self.workers['remote_workers'][0].save_ppc_params.remote(self.model_dir)
 
-            self.iteration += 1
+        self.iteration += 1
 
 
 class OffPolicyAsyncOptimizer(object):
