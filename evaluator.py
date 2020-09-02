@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2020/6/10
+# @Time    : 2020/9/1
 # @Author  : Yang Guan (Tsinghua Univ.)
 # @FileName: evaluator.py
 # =====================================
@@ -54,36 +54,33 @@ class Evaluator(object):
         self.load_weights(model_load_dir, iteration)
         self.load_ppc_params(ppc_params_load_dir)
 
-    def run_an_episode(self):
+    def run_an_episode(self, steps=None):
         reward_list = []
         reward_info_dict_list = []
         done = 0
         obs = self.env.reset()
         self.env.render()
-        while not done:
-            processed_obs = self.preprocessor.tf_process_obses(obs)
-            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
-            obs, reward, done, info = self.env.step(action[0].numpy())
-            reward_info_dict_list.append(dict(punish_steer=info['punish_steer'],
-                                              punish_a_x=info['punish_a_x'],
-                                              punish_yaw_rate=info['punish_yaw_rate'],
-                                              devi_v=info['devi_v'],
-                                              devi_y=info['devi_y'],
-                                              devi_phi=info['devi_phi'],
-                                              veh2road=info['veh2road'],
-                                              veh2veh=info['veh2veh'],
-                                              rew_alpha_f=info['rew_alpha_f'],
-                                              rew_alpha_r=info['rew_alpha_r'],
-                                              rew_r=info['rew_r']
-                                              ))
-            self.env.render()
-            reward_list.append(reward)
+        if steps is not None:
+            for _ in range(steps):
+                processed_obs = self.preprocessor.tf_process_obses(obs)
+                action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+                obs, reward, done, info = self.env.step(action[0].numpy())
+                reward_info_dict_list.append(info['reward_info'])
+                self.env.render()
+                reward_list.append(reward)
+        else:
+            while not done:
+                processed_obs = self.preprocessor.tf_process_obses(obs)
+                action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+                obs, reward, done, info = self.env.step(action[0].numpy())
+                reward_info_dict_list.append(info['reward_info'])
+                self.env.render()
+                reward_list.append(reward)
         self.env.close()
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
-        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y',
-                    'devi_phi', 'veh2road', 'veh2veh', 'rew_alpha_f', 'rew_alpha_r', 'rew_r']:
+        for key in reward_info_dict_list[0].keys():
             info_key = list(map(lambda x: x[key], reward_info_dict_list))
             mean_key = sum(info_key) / len(info_key)
             info_dict.update({key: mean_key})
@@ -95,15 +92,14 @@ class Evaluator(object):
         list_of_info_dict = []
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))
-            episode_return, episode_len, info_dict = self.run_an_episode()
+            episode_return, episode_len, info_dict = self.run_an_episode(50)
             list_of_return.append(episode_return)
             list_of_len.append(episode_len)
             list_of_info_dict.append(info_dict)
         average_return = sum(list_of_return) / len(list_of_return)
         average_len = sum(list_of_len) / len(list_of_len)
         n_info_dict = dict()
-        for key in ['punish_steer', 'punish_a_x', 'punish_yaw_rate', 'devi_v', 'devi_y',
-                    'devi_phi', 'veh2road', 'veh2veh', 'rew_alpha_f', 'rew_alpha_r', 'rew_r']:
+        for key in list_of_info_dict[0].keys():
             info_key = list(map(lambda x: x[key], list_of_info_dict))
             mean_key = sum(info_key) / len(info_key)
             n_info_dict.update({key: mean_key})

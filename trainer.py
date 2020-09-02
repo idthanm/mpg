@@ -12,8 +12,7 @@ import logging
 import ray
 
 from evaluator import Evaluator
-from off_policy.offpolicy_worker import OffPolicyWorker
-from worker import OnPolicyWorker
+from worker import OffPolicyWorker
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
