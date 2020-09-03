@@ -98,7 +98,7 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=10)
-    parser.add_argument('--num_learners', type=int, default=6)
+    parser.add_argument('--num_learners', type=int, default=10)
     parser.add_argument('--num_buffers', type=int, default=6)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
