@@ -83,7 +83,7 @@ def built_offpolicy_mb_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_batch_size', type=int, default=128)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=100)
@@ -117,11 +117,11 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=1000000)
     parser.add_argument('--max_updated_steps', type=int, default=100000)
     parser.add_argument('--num_workers', type=int, default=10)
-    parser.add_argument('--num_learners', type=int, default=10)
+    parser.add_argument('--num_learners', type=int, default=6)
     parser.add_argument('--num_buffers', type=int, default=6)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=2000)
+    parser.add_argument("--eval_interval", type=int, default=1500)
     parser.add_argument("--save_interval", type=int, default=2000)
     parser.add_argument("--log_interval", type=int, default=1)
 
