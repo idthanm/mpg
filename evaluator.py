@@ -34,7 +34,10 @@ class Evaluator(object):
                             num_future_data=self.args.num_future_data)
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
-        self.log_dir = self.args.log_dir
+        if self.args.mode == 'training':
+            self.log_dir = self.args.log_dir + '/evaluator'
+        else:
+            self.log_dir = self.args.test_log_dir
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
@@ -42,7 +45,7 @@ class Evaluator(object):
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma)
 
-        self.writer = self.tf.summary.create_file_writer(self.log_dir + '/evaluator')
+        self.writer = self.tf.summary.create_file_writer(self.log_dir)
         self.stats = {}
         self.eval_timer = TimerStat()
         self.eval_times = 0

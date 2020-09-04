@@ -19,6 +19,7 @@ from buffer import PrioritizedReplayBuffer, ReplayBuffer
 from offpolicy_mb_learner import OffPolicyMBLearner
 from optimizer import OffPolicyAsyncOptimizer
 from policy import PolicyWithQs
+from tester import Tester
 from trainer import Trainer
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,24 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer)])
 
 def built_offpolicy_mb_parser():
     parser = argparse.ArgumentParser()
+
+    parser.add_argument('--mode', type=str, default='testing')
+    mode = parser.parse_args().mode
+
+    if mode == 'testing':
+        test_dir = './results/toyota/experiment-2020-09-03-17-04-11'
+        params = json.loads(open(test_dir + '/config.json').read())
+        time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
+        test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
+        params.update(dict(test_dir=test_dir,
+                           test_iter_list=[0],
+                           test_log_dir=test_log_dir,
+                           num_eval_episode=5,
+                           eval_log_interval=1,
+                           fixed_steps=50))
+        for key, val in params.items():
+            parser.add_argument("-" + key, default=val)
+        return parser.parse_args()
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
@@ -69,7 +88,7 @@ def built_offpolicy_mb_parser():
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=100)
 
-    # evaluator
+    # tester and evaluator
     parser.add_argument("--num_eval_episode", type=int, default=2)
     parser.add_argument("--eval_log_interval", type=int, default=1)
     parser.add_argument("--fixed_steps", type=int, default=50)
@@ -131,23 +150,31 @@ def built_parser(alg_name):
 def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
-    ray.init(redis_max_memory=1024*1024*1024, object_store_memory=1024*1024*1024)
-    os.makedirs(args.result_dir)
-    with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
-        json.dump(vars(args), f, ensure_ascii=False, indent=4)
-    trainer = Trainer(policy_cls=PolicyWithQs,
-                      learner_cls=NAME2LEARNERCLS[args.alg_name],
-                      buffer_cls=NAME2BUFFERCLS[args.buffer_type],
-                      optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
-                      args=args)
-    if args.model_load_dir is not None:
-        logger.info('loading model')
-        trainer.load_weights(args.model_load_dir, args.model_load_ite)
-    if args.ppc_load_dir is not None:
-        logger.info('loading ppc parameter')
-        trainer.load_ppc_params(args.ppc_load_dir)
+    if args.mode == 'training':
+        ray.init(redis_max_memory=1024 * 1024 * 1024, object_store_memory=1024 * 1024 * 1024)
+        os.makedirs(args.result_dir)
+        with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
+            json.dump(vars(args), f, ensure_ascii=False, indent=4)
+        trainer = Trainer(policy_cls=PolicyWithQs,
+                          learner_cls=NAME2LEARNERCLS[args.alg_name],
+                          buffer_cls=NAME2BUFFERCLS[args.buffer_type],
+                          optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
+                          args=args)
+        if args.model_load_dir is not None:
+            logger.info('loading model')
+            trainer.load_weights(args.model_load_dir, args.model_load_ite)
+        if args.ppc_load_dir is not None:
+            logger.info('loading ppc parameter')
+            trainer.load_ppc_params(args.ppc_load_dir)
+        trainer.train()
 
-    trainer.train()
+    elif args.mode == 'testing':
+        os.makedirs(args.test_log_dir)
+        with open(args.test_log_dir + '/test_config.json', 'w', encoding='utf-8') as f:
+            json.dump(vars(args), f, ensure_ascii=False, indent=4)
+        tester = Tester(policy_cls=PolicyWithQs,
+                        args=args)
+        tester.test()
 
 
 if __name__ == '__main__':
