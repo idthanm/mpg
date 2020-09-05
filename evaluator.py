@@ -143,8 +143,12 @@ def test_trained_model(model_dir, ppc_params_dir, iteration):
     evaluator.load_ppc_params(ppc_params_dir)
     return evaluator.metrics(1000, render=False, reset=False)
 
+def test_evaluator():
+    from train_script import built_offpolicy_mb_parser
+    from policy import PolicyWithQs
+    args = built_offpolicy_mb_parser()
+    evaluator = Evaluator(PolicyWithQs, args.env_id, args)
+    evaluator.run_evaluation(3)
 
 if __name__ == '__main__':
-    model_dir = './results/mixed_pg/experiment-2020-04-22-14-01-37/models'
-    # model_dir = './results/mixed_pg/experiment-2020-04-22-15-02-12/models'
-    print(test_trained_model(model_dir, model_dir, 20))
+    test_evaluator()
