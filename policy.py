@@ -25,8 +25,10 @@ class PolicyWithQs(object):
         self.act_dist_cls = GuassianDistribution
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
         n_hiddens, n_units = self.args.num_hidden_layers, self.args.num_hidden_units
-        self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy', output_activation='tanh')
-        self.policy_target = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy_target', output_activation='tanh')
+        self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy',
+                             output_activation=self.args.policy_out_activation)
+        self.policy_target = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy_target',
+                                    output_activation=self.args.policy_out_activation)
         policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='policy_adam_opt')
 
