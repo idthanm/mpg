@@ -46,19 +46,23 @@ class UpdateThread(threading.Thread):
             os.makedirs(self.model_dir)
         self.iteration = 0
         self.update_timer = TimerStat()
-        with self.update_timer:
-            time.sleep(0.1)
+        self.wait_timer = TimerStat()
+        self.update_timer.push(0.1)
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
 
     def run(self):
+        t1 = time.time()
         while not self.stopped:
             if not self.inqueue.empty():
+                self.wait_timer.push(time.time()-t1)
                 with self.update_timer:
                     self.step()
+                t1 = time.time()
 
     def step(self):
         self.optimizer_stats.update({'update_queue_size': self.inqueue.qsize()})
         self.optimizer_stats.update({'update_time': self.update_timer.mean})
+        self.optimizer_stats.update({'wait_time': self.wait_timer.mean})
 
         # updating
         grads, learner_stats = self.inqueue.get()
