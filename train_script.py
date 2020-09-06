@@ -200,16 +200,18 @@ def built_ampc_parser():
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
-    parser.add_argument("--policy_out_activation", type=str, default='linear')
+    parser.add_argument("--policy_out_activation", type=str, default='tanh')
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
+    parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1., 2.4] + [1.] * num_future_data)
+    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1/20., 1/20, 1/180.] +
+                                                                 [1., 1/15., 0.2] +
+                                                                 [1/20., 1/20., 0.2, 1/180.] * 6)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.1)
+    parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)

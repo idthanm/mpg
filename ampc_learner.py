@@ -73,38 +73,53 @@ class AMPCLearner(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
+    # def model_rollout_for_policy_update(self, start_obses):
+    #     processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
+    #     start_actions, _ = self.policy_with_value.compute_action(processed_start_obses)
+    #     max_num_rollout = max(self.num_rollout_list_for_policy_update)
+    #
+    #     obses_tile = self.tf.tile(start_obses, [self.M, 1])
+    #     actions_tile = self.tf.tile(start_actions, [self.M, 1])
+    #     rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
+    #     rewards_sum_list = [rewards_sum_tile]
+    #
+    #     self.model.reset(obses_tile, self.args.training_task)
+    #     if max_num_rollout > 0:
+    #         for ri in range(max_num_rollout):
+    #             obses_tile, rewards = self.model.rollout_out(actions_tile)
+    #             processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
+    #             processed_rewards = self.preprocessor.tf_process_rewards(rewards)
+    #             rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
+    #             rewards_sum_list.append(rewards_sum_tile)
+    #             actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
+    #
+    #     with self.tf.name_scope('compute_all_model_returns') as scope:
+    #         all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
+    #
+    #         final = self.tf.reshape(all_rewards_sums, (max_num_rollout + 1, self.M, -1))
+    #         # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
+    #         #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
+    #         #        ...
+    #         #        [[timen+traj0], [timen+traj1], ..., [timen+trajn]],
+    #         #        ]
+    #         all_model_returns = self.tf.reduce_mean(final, axis=1)
+    #     all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=-1)
+    #     policy_loss = -all_reduced_model_returns[self.num_rollout_list_for_policy_update[0]]
+    #
+    #     return policy_loss
+
     def model_rollout_for_policy_update(self, start_obses):
-        processed_start_obses = self.preprocessor.tf_process_obses(start_obses)
-        start_actions, _ = self.policy_with_value.compute_action(processed_start_obses)
-        max_num_rollout = max(self.num_rollout_list_for_policy_update)
+        self.model.reset(start_obses, self.args.training_task)
+        rewards_sum = self.tf.zeros((start_obses.shape[0],))
+        obses = start_obses
 
-        obses_tile = self.tf.tile(start_obses, [self.M, 1])
-        actions_tile = self.tf.tile(start_actions, [self.M, 1])
-        rewards_sum_tile = self.tf.zeros((obses_tile.shape[0],))
-        rewards_sum_list = [rewards_sum_tile]
+        for _ in range(self.num_rollout_list_for_policy_update[0]):
+            processed_obses = self.preprocessor.tf_process_obses(obses)
+            actions, _ = self.policy_with_value.compute_action(processed_obses)
+            obses, rewards = self.model.rollout_out(actions)
+            rewards_sum += self.preprocessor.tf_process_rewards(rewards)
 
-        self.model.reset(obses_tile, self.args.training_task)
-        if max_num_rollout > 0:
-            for ri in range(max_num_rollout):
-                obses_tile, rewards = self.model.rollout_out(actions_tile)
-                processed_obses_tile = self.preprocessor.tf_process_obses(obses_tile)
-                processed_rewards = self.preprocessor.tf_process_rewards(rewards)
-                rewards_sum_tile += self.tf.pow(self.args.gamma, ri) * processed_rewards
-                rewards_sum_list.append(rewards_sum_tile)
-                actions_tile, _ = self.policy_with_value.compute_action(processed_obses_tile)
-
-        with self.tf.name_scope('compute_all_model_returns') as scope:
-            all_rewards_sums = self.tf.concat(rewards_sum_list, 0)
-
-            final = self.tf.reshape(all_rewards_sums, (max_num_rollout + 1, self.M, -1))
-            # final [[[time0+traj0], [time0+traj1], ..., [time0+trajn]],
-            #        [[time1+traj0], [time1+traj1], ..., [time1+trajn]],
-            #        ...
-            #        [[timen+traj0], [timen+traj1], ..., [timen+trajn]],
-            #        ]
-            all_model_returns = self.tf.reduce_mean(final, axis=1)
-        all_reduced_model_returns = self.tf.reduce_mean(all_model_returns, axis=-1)
-        policy_loss = -all_reduced_model_returns[self.num_rollout_list_for_policy_update[0]]
+        policy_loss = -self.tf.reduce_mean(rewards_sum)
 
         return policy_loss
 
