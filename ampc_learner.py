@@ -51,7 +51,7 @@ class AMPCLearner(object):
     def get_info_for_buffer(self):
         return self.info_for_buffer
 
-    def get_batch_data(self, batch_data, rb_index, indexes):
+    def get_batch_data(self, batch_data, rb, indexes):
         self.batch_data = {'batch_obs': batch_data[0].astype(np.float32),
                            'batch_actions': batch_data[1].astype(np.float32),
                            'batch_rewards': batch_data[2].astype(np.float32),
@@ -139,7 +139,8 @@ class AMPCLearner(object):
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
-    def compute_gradient(self, iteration):
+    def compute_gradient(self, samples, rb, indexs, iteration):
+        self.get_batch_data(samples, rb, indexs)
         mb_obs = self.batch_data['batch_obs']
 
         with self.policy_gradient_timer:
@@ -155,7 +156,7 @@ class AMPCLearner(object):
         ))
 
         gradient_tensor = policy_gradient
-        return list(map(lambda x: x.numpy(), gradient_tensor))
+        return list(map(lambda x: x.numpy(), gradient_tensor)), self.get_stats(), self.get_info_for_buffer()
 
 
 if __name__ == '__main__':

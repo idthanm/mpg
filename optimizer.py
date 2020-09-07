@@ -20,9 +20,14 @@ import tensorflow as tf
 from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
+from utils.memory import ray_get_and_free
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+WORKER_DEPTH = 2
+BUFFER_DEPTH = 2
+LEARNER_QUEUE_MAX_SIZE = 16
 
 
 class UpdateThread(threading.Thread):
@@ -116,15 +121,16 @@ class OffPolicyAsyncOptimizer(object):
         self.workers = workers
         self.local_worker = self.workers['local_worker']
         self.learners = learners
+        self.learner_queue = queue.Queue(LEARNER_QUEUE_MAX_SIZE)
         self.replay_buffers = replay_buffers
         self.evaluator = evaluator
         self.num_sampled_steps = 0
         self.num_updated_steps = 0
+        self.num_samples_dropped = 0
         self.optimizer_steps = 0
-        self.stats = dict(num_sampled_steps=self.num_sampled_steps,
-                          num_updated_steps=self.num_updated_steps,
-                          optimizer_steps=self.optimizer_steps,
-                          update_queue_size=0)
+        self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
+                                                "learning_timer"]}
+        self.stats = {}
         self.update_thread = UpdateThread(self.workers, self.evaluator, self.args,
                                           self.stats)
         self.update_thread.start()
@@ -150,6 +156,9 @@ class OffPolicyAsyncOptimizer(object):
                 self.sample_tasks.add(worker, worker.sample_with_count.remote())
         logger.info('end filling the replay')
 
+        self.replay_tasks = TaskPool()
+        self._set_buffers()
+
         self.learn_tasks = TaskPool()
         self._set_learners()
         logger.info('Optimizer initialized')
@@ -157,7 +166,17 @@ class OffPolicyAsyncOptimizer(object):
     def get_stats(self):
         self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
                                num_updated_steps=self.num_updated_steps,
-                               optimizer_steps=self.optimizer_steps))
+                               optimizer_steps=self.optimizer_steps,
+                               num_samples_dropped=self.num_samples_dropped,
+                               pending_sample_tasks=self.sample_tasks.count,
+                               pending_replay_tasks=self.replay_tasks.count,
+                               pending_learn_tasks=self.learn_tasks.count,
+                               learner_queue_size=self.learner_queue.qsize(),
+                               sampling_time=self.timers['sampling_timer'].mean,
+                               replay_time=self.timers["replay_timer"].mean,
+                               learning_time=self.timers['learning_timer'].mean
+                               )
+                          )
         return self.stats
 
     def _set_workers(self):
@@ -165,49 +184,76 @@ class OffPolicyAsyncOptimizer(object):
         for worker in self.workers['remote_workers']:
             worker.set_weights.remote(weights)
             self.steps_since_update[worker] = 0
-            self.sample_tasks.add(worker, worker.sample_with_count.remote())
+            for _ in range(WORKER_DEPTH):
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+
+    def _set_buffers(self):
+        for rb in self.replay_buffers:
+            for _ in range(BUFFER_DEPTH):
+                self.replay_tasks.add(rb, rb.replay.remote())
 
     def _set_learners(self):
         weights = self.local_worker.get_weights()
+        ppc_params = self.local_worker.get_ppc_params()
         for learner in self.learners:
             learner.set_weights.remote(weights)
-            rb, rb_index = random_choice_with_index(self.replay_buffers)
+            if self.args.obs_preprocess_type == 'normalize' or \
+                    self.args.reward_preprocess_type == 'normalize':
+                learner.set_ppc_params.remote(ppc_params)
+            rb, _ = random_choice_with_index(self.replay_buffers)
             samples = ray.get(rb.replay.remote())
-            learner.get_batch_data.remote(samples[:5], rb_index, samples[-1])
-            self.learn_tasks.add(learner, learner.compute_gradient.remote(self.local_worker.iteration))
+            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+                                                                          self.local_worker.iteration))
 
     def step(self):
         assert self.update_thread.is_alive()
         assert len(self.workers['remote_workers']) > 0
+        weights = None
 
         # sampling
-        for worker, objID in self.sample_tasks.completed():
-            sample_batch, count = ray.get(objID)
-            random.choice(self.replay_buffers).add_batch.remote(sample_batch)
-            self.num_sampled_steps += count
-            self.steps_since_update[worker] += count
-            if self.steps_since_update[worker] >= self.max_weight_sync_delay:
-                judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
-                worker.set_weights.remote(self.local_worker.get_weights())
-                self.steps_since_update[worker] = 0
-            self.sample_tasks.add(worker, worker.sample_with_count.remote())
+        with self.timers['sampling_timer']:
+            for worker, objID in self.sample_tasks.completed():
+                sample_batch, count = ray.get(objID)
+                random.choice(self.replay_buffers).add_batch.remote(sample_batch)
+                self.num_sampled_steps += count
+                self.steps_since_update[worker] += count
+                if self.steps_since_update[worker] >= self.max_weight_sync_delay:
+                    judge_is_nan(self.local_worker.policy_with_value.policy.trainable_weights)
+                    if weights is None:
+                        weights = ray.put(self.local_worker.get_weights())
+                    worker.set_weights.remote(weights)
+                    self.steps_since_update[worker] = 0
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
+
+        with self.timers["replay_timer"]:
+            for rb, replay in self.replay_tasks.completed():
+                self.replay_tasks.add(rb, rb.replay.remote())
+                if self.learner_queue.full():
+                    self.num_samples_dropped += 1
+                else:
+                    samples = ray_get_and_free(replay)
+                    self.learner_queue.put((rb, samples))
 
         # learning
-        for learner, objID in self.learn_tasks.completed():
-            grads = ray.get(objID)
-            info_for_buffer = ray.get(learner.get_info_for_buffer.remote())
-            learner_stats = ray.get(learner.get_stats.remote())
-            if self.args.buffer_type == 'priority':
-                self.replay_buffers[info_for_buffer['rb_index']].update_priorities.remote(info_for_buffer['indexes'],
-                                                                                          info_for_buffer['td_error'])
-            rb, rb_index = random_choice_with_index(self.replay_buffers)
-            samples = ray.get(rb.replay.remote())
-            assert grads is not None and samples is not None
-            learner.set_ppc_params.remote(self.local_worker.get_ppc_params())
-            learner.set_weights.remote(self.local_worker.get_weights())
-            learner.get_batch_data.remote(samples[:5], rb_index, samples[-1])
-            self.learn_tasks.add(learner, learner.compute_gradient.remote(self.local_worker.iteration))
-            self.update_thread.inqueue.put([grads, learner_stats])
+        with self.timers['learning_timer']:
+            for learner, objID in self.learn_tasks.completed():
+                grads, learner_stats, info_for_buffer = ray.get(objID)
+                assert grads is not None
+                self.update_thread.inqueue.put([grads, learner_stats])
+                if self.args.buffer_type == 'priority':
+                    info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
+                                                                   info_for_buffer['td_error'])
+                assert not self.learner_queue.empty()
+                rb, samples = self.learner_queue.get()
+                assert samples is not None
+                if self.args.obs_preprocess_type == 'normalize' or \
+                        self.args.reward_preprocess_type == 'normalize':
+                    learner.set_ppc_params.remote(self.local_worker.get_ppc_params())
+                if weights is None:
+                    weights = ray.put(self.local_worker.get_weights())
+                learner.set_weights.remote(weights)
+                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+                                                                              self.local_worker.iteration))
 
         self.num_updated_steps = self.update_thread.iteration
         self.optimizer_steps += 1

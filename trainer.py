@@ -33,7 +33,7 @@ class Trainer(object):
             self.buffers = [ray.remote(num_cpus=1)(buffer_cls).remote(self.args, i+1)
                             for i in range(self.args.num_buffers)]
             self.learners = [ray.remote(num_cpus=1)(learner_cls).remote(policy_cls, args)
-                             for _ in range(self.args.num_buffers)]
+                             for _ in range(self.args.num_learners)]
             self.optimizer = optimizer_cls(self.workers, self.learners, self.buffers, self.evaluator, self.args)
 
     def load_weights(self, load_dir, iteration):

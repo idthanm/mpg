@@ -53,7 +53,7 @@ class OffPolicyMBLearner(object):
     def get_info_for_buffer(self):
         return self.info_for_buffer
 
-    def get_batch_data(self, batch_data, rb_index, indexes):
+    def get_batch_data(self, batch_data, rb, indexes):
         self.batch_data = {'batch_obs': batch_data[0].astype(np.float32),
                            'batch_actions': batch_data[1].astype(np.float32),
                            'batch_rewards': batch_data[2].astype(np.float32),
@@ -62,7 +62,7 @@ class OffPolicyMBLearner(object):
                            }
         td_error = self.compute_td_errors()
         self.info_for_buffer.update(dict(td_error=td_error,
-                                         rb_index=rb_index,
+                                         rb=rb,
                                          indexes=indexes))
 
         # print(self.batch_data['batch_obs'].shape)  # batch_size * obs_dim
@@ -209,7 +209,8 @@ class OffPolicyMBLearner(object):
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
-    def compute_gradient(self, iteration):
+    def compute_gradient(self, batch_data, rb, indexes, iteration):
+        self.get_batch_data(batch_data, rb, indexes)
         mb_obs = self.batch_data['batch_obs']
         mb_actions = self.batch_data['batch_actions']
 
