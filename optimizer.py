@@ -20,7 +20,6 @@ import tensorflow as tf
 from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
-from utils.memory import ray_get_and_free
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -227,7 +226,7 @@ class OffPolicyAsyncOptimizer(object):
                 if self.learner_queue.full():
                     self.num_samples_dropped += 1
                 else:
-                    samples = ray_get_and_free(replay)
+                    samples = ray.get(replay)
                     self.learner_queue.put((rb, samples))
 
         # learning
