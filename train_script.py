@@ -223,7 +223,7 @@ def built_ampc_parser():
     parser.add_argument('--grads_queue_size', type=int, default=20)
     parser.add_argument("--eval_interval", type=int, default=1500)
     parser.add_argument("--save_interval", type=int, default=2000)
-    parser.add_argument("--log_interval", type=int, default=1)
+    parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
