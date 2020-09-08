@@ -156,7 +156,7 @@ class AMPCLearner(object):
         ))
 
         gradient_tensor = policy_gradient
-        return list(map(lambda x: x.numpy(), gradient_tensor)), self.get_stats(), self.get_info_for_buffer()
+        return list(map(lambda x: x.numpy(), gradient_tensor))
 
 
 if __name__ == '__main__':

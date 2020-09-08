@@ -35,6 +35,7 @@ def judge_is_nan(list_of_np_or_tensor):
                 print(list_of_np_or_tensor)
                 raise ValueError
 
+
 class TimerStat:
     def __init__(self, window_size=10):
         self._window_size = window_size
@@ -61,8 +62,32 @@ class TimerStat:
         self.count += 1
         self._total_time += time_delta
 
+    def push_units_processed(self, n):
+        self._units_processed.append(n)
+        if len(self._units_processed) > self._window_size:
+            self._units_processed.pop(0)
+
+    def has_units_processed(self):
+        return len(self._units_processed) > 0
+
     @property
     def mean(self):
-        return np.mean(self._samples)
+        if not self._samples:
+            return 0.0
+        return float(np.mean(self._samples))
+
+    @property
+    def mean_units_processed(self):
+        if not self._units_processed:
+            return 0.0
+        return float(np.mean(self._units_processed))
+
+    @property
+    def mean_throughput(self):
+        time_total = float(sum(self._samples))
+        if not time_total:
+            return 0.0
+        return float(sum(self._units_processed)) / time_total
+
 
 

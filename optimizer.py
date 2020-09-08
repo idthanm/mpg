@@ -12,7 +12,6 @@ import os
 import queue
 import random
 import threading
-import time
 
 import ray
 import tensorflow as tf
@@ -25,7 +24,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 WORKER_DEPTH = 2
-BUFFER_DEPTH = 2
+BUFFER_DEPTH = 4
 LEARNER_QUEUE_MAX_SIZE = 16
 
 
@@ -50,33 +49,38 @@ class UpdateThread(threading.Thread):
             os.makedirs(self.model_dir)
         self.iteration = 0
         self.update_timer = TimerStat()
-        self.wait_timer = TimerStat()
-        self.update_timer.push(0.1)
+        self.grad_queue_get_timer = TimerStat()
+        self.grad_apply_timer = TimerStat()
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
 
     def run(self):
-        t1 = time.time()
         while not self.stopped:
-            if not self.inqueue.empty():
-                self.wait_timer.push(time.time()-t1)
-                with self.update_timer:
-                    self.step()
-                t1 = time.time()
+            with self.update_timer:
+                self.step()
+                self.update_timer.push_units_processed(1)
 
     def step(self):
-        self.optimizer_stats.update({'update_queue_size': self.inqueue.qsize()})
-        self.optimizer_stats.update({'update_time': self.update_timer.mean})
-        self.optimizer_stats.update({'wait_time': self.wait_timer.mean})
+        self.optimizer_stats.update(dict(update_queue_size=self.inqueue.qsize(),
+                                         update_time=self.update_timer.mean,
+                                         update_throughput=self.update_timer.mean_throughput,
+                                         grad_queue_get_time=self.grad_queue_get_timer.mean,
+                                         grad_apply_timer=self.grad_apply_timer.mean
+                                    ))
+        # fetch grad
+        with self.grad_queue_get_timer:
+            grads, learner_stats = self.inqueue.get()
 
-        # updating
-        grads, learner_stats = self.inqueue.get()
-        try:
-            judge_is_nan(grads)
-        except ValueError:
-            grads = [tf.zeros_like(grad) for grad in grads]
-            logger.info('Grad is nan!, zero it')
-        self.local_worker.apply_gradients(self.iteration, grads)
+        # apply grad
+        with self.grad_apply_timer:
+            try:
+                judge_is_nan(grads)
+            except ValueError:
+                grads = [tf.zeros_like(grad) for grad in grads]
+                logger.info('Grad is nan!, zero it')
 
+            self.local_worker.apply_gradients(self.iteration, grads)
+
+        # log
         if self.iteration % self.args.log_interval == 0:
             logger.info('updating {} in total'.format(self.iteration))
             logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
@@ -92,7 +96,7 @@ class UpdateThread(threading.Thread):
                     tf.summary.scalar('optimizer/{}'.format(key), val, step=self.iteration)
                 self.writer.flush()
 
-        # evaluation
+        # evaluate
         if self.iteration % self.args.eval_interval == 0:
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
             self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
@@ -220,6 +224,7 @@ class OffPolicyAsyncOptimizer(object):
                     self.steps_since_update[worker] = 0
                 self.sample_tasks.add(worker, worker.sample_with_count.remote())
 
+        # replay
         with self.timers["replay_timer"]:
             for rb, replay in self.replay_tasks.completed():
                 self.replay_tasks.add(rb, rb.replay.remote())
@@ -232,15 +237,13 @@ class OffPolicyAsyncOptimizer(object):
         # learning
         with self.timers['learning_timer']:
             for learner, objID in self.learn_tasks.completed():
-                grads, learner_stats, info_for_buffer = ray.get(objID)
-                assert grads is not None
-                self.update_thread.inqueue.put([grads, learner_stats])
+                grads = ray.get(objID)
+                learner_stats = ray.get(learner.get_stats.remote())
                 if self.args.buffer_type == 'priority':
+                    info_for_buffer = ray.get(learner.get_info_for_buffer.remote())
                     info_for_buffer['rb'].update_priorities.remote(info_for_buffer['indexes'],
                                                                    info_for_buffer['td_error'])
-                assert not self.learner_queue.empty()
-                rb, samples = self.learner_queue.get()
-                assert samples is not None
+                rb, samples = self.learner_queue.get(block=False)
                 if self.args.obs_preprocess_type == 'normalize' or \
                         self.args.reward_preprocess_type == 'normalize':
                     learner.set_ppc_params.remote(self.local_worker.get_ppc_params())
@@ -249,6 +252,7 @@ class OffPolicyAsyncOptimizer(object):
                 learner.set_weights.remote(weights)
                 self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
                                                                               self.local_worker.iteration))
+                self.update_thread.inqueue.put([grads, learner_stats])
 
         self.num_updated_steps = self.update_thread.iteration
         self.optimizer_steps += 1
