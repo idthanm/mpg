@@ -212,6 +212,7 @@ def built_ampc_parser():
     obs_scale_factor = [0.2, 1., 2., 1/20., 1/20, 1/180.] + \
                        [1., 1/15., 0.2] * (1 + num_future_data) + \
                        [1/20., 1/20., 0.2, 1/180.] * TASK2VEHNUM[training_task]
+    parser.add_argument("--obs_scale_factor", type=list, default=obs_scale_factor)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
