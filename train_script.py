@@ -207,9 +207,11 @@ def built_ampc_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='scale')
     num_future_data = parser.parse_args().num_future_data
-    parser.add_argument("--obs_scale_factor", type=list, default=[0.2, 1., 2., 1/20., 1/20, 1/180.] +
-                                                                 [1., 1/15., 0.2] +
-                                                                 [1/20., 1/20., 0.2, 1/180.] * 6)
+    training_task = parser.parse_args().training_task
+    TASK2VEHNUM = {'left': 6, 'straight': 7, 'right': 5}
+    obs_scale_factor = [0.2, 1., 2., 1/20., 1/20, 1/180.] + \
+                       [1., 1/15., 0.2] * (1 + num_future_data) + \
+                       [1/20., 1/20., 0.2, 1/180.] * TASK2VEHNUM[training_task]
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale_factor", type=float, default=1.)
 
