@@ -38,11 +38,10 @@ class Trainer(object):
 
     def load_weights(self, load_dir, iteration):
         self.local_worker.load_weights(load_dir, iteration)
-        self.evaluator.load_weights(load_dir, iteration)
 
     def load_ppc_params(self, load_dir):
-        self.local_worker.load_ppc_params(load_dir)
-        self.evaluator.load_ppc_params(load_dir)
+        for remote_worker in self.remote_workers:
+            remote_worker.load_ppc_params.remote(load_dir)
 
     def train(self):
         logger.info('training beginning')
