@@ -12,9 +12,9 @@ import os
 
 import gym
 import numpy as np
-from utils.misc import TimerStat
 
 from preprocessor import Preprocessor
+from utils.misc import TimerStat
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -64,19 +64,19 @@ class Evaluator(object):
         self.load_weights(model_load_dir, iteration)
         self.load_ppc_params(ppc_params_load_dir)
 
-    def run_an_episode(self, steps=None):
+    def run_an_episode(self, steps=None, render=True):
         reward_list = []
         reward_info_dict_list = []
         done = 0
         obs = self.env.reset()
-        self.env.render()
+        if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
                 obs, reward, done, info = self.env.step(action[0].numpy())
                 reward_info_dict_list.append(info['reward_info'])
-                self.env.render()
+                if render: self.env.render()
                 reward_list.append(reward)
         else:
             while not done:
@@ -84,7 +84,7 @@ class Evaluator(object):
                 action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
                 obs, reward, done, info = self.env.step(action[0].numpy())
                 reward_info_dict_list.append(info['reward_info'])
-                self.env.render()
+                if render: self.env.render()
                 reward_list.append(reward)
         self.env.close()
         episode_return = sum(reward_list)
@@ -104,7 +104,7 @@ class Evaluator(object):
         list_of_info_dict = []
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))
-            info_dict = self.run_an_episode(self.args.fixed_steps)
+            info_dict = self.run_an_episode(self.args.fixed_steps, self.args.eval_render)
             list_of_info_dict.append(info_dict)
         n_info_dict = dict()
         for key in list_of_info_dict[0].keys():

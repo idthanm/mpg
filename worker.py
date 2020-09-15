@@ -87,14 +87,14 @@ class OffPolicyWorker(object):
         for _ in range(self.batch_size):
             processed_obs = self.preprocessor.process_obs(self.obs)
             judge_is_nan([processed_obs])
-            action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+            action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
             try:
                 judge_is_nan([action])
             except ValueError:
                 print('processed_obs', processed_obs)
                 print('preprocessor_params', self.preprocessor.get_params())
                 print('policy_weights', self.policy_with_value.policy.trainable_weights)
-                action, neglogp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+                action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
