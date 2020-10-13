@@ -80,7 +80,7 @@ def built_ampc_parser():
     parser.add_argument('--explore_sigma', type=float, default=None)
 
     # buffer
-    parser.add_argument('--max_buffer_size', type=int, default=500000)
+    parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
     parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
@@ -130,7 +130,7 @@ def built_ampc_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/ampc/experiment-{time}'.format(time=time_now)
+    results_dir = './results/toyota/experiment-{time}'.format(time=time_now)
     parser.add_argument("--result_dir", type=str, default=results_dir)
     parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
     parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
