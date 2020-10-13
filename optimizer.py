@@ -19,13 +19,14 @@ import tensorflow as tf
 from utils.misc import judge_is_nan, TimerStat
 from utils.misc import random_choice_with_index
 from utils.task_pool import TaskPool
+from queue import Empty
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 WORKER_DEPTH = 2
 BUFFER_DEPTH = 4
-LEARNER_QUEUE_MAX_SIZE = 16
+LEARNER_QUEUE_MAX_SIZE = 128
 
 
 class UpdateThread(threading.Thread):
@@ -68,7 +69,10 @@ class UpdateThread(threading.Thread):
                                     ))
         # fetch grad
         with self.grad_queue_get_timer:
-            grads, learner_stats = self.inqueue.get()
+            try:
+                grads, learner_stats = self.inqueue.get(timeout=30)
+            except Empty:
+                return
 
         # apply grad
         with self.grad_apply_timer:
@@ -129,6 +133,7 @@ class OffPolicyAsyncOptimizer(object):
         self.num_sampled_steps = 0
         self.num_updated_steps = 0
         self.num_samples_dropped = 0
+        self.num_grads_dropped = 0
         self.optimizer_steps = 0
         self.timers = {k: TimerStat() for k in ["sampling_timer", "replay_timer",
                                                 "learning_timer"]}
@@ -170,6 +175,7 @@ class OffPolicyAsyncOptimizer(object):
                                num_updated_steps=self.num_updated_steps,
                                optimizer_steps=self.optimizer_steps,
                                num_samples_dropped=self.num_samples_dropped,
+                               num_grads_dropped=self.num_grads_dropped,
                                learner_queue_size=self.learner_queue.qsize(),
                                sampling_time=self.timers['sampling_timer'].mean,
                                replay_time=self.timers["replay_timer"].mean,
@@ -252,6 +258,8 @@ class OffPolicyAsyncOptimizer(object):
                 learner.set_weights.remote(weights)
                 self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
                                                                               self.local_worker.iteration))
+                if self.update_thread.inqueue.full():
+                    self.num_grads_dropped += 1
                 self.update_thread.inqueue.put([grads, learner_stats])
 
         self.num_updated_steps = self.update_thread.iteration
@@ -259,11 +267,4 @@ class OffPolicyAsyncOptimizer(object):
         self.get_stats()
 
     def stop(self):
-        for r in self.workers['remote_workers']:
-            r.__ray_terminate__.remote()
-        for r in self.learners:
-            r.__ray_terminate__.remote()
-        for r in self.replay_buffers:
-            r.__ray_terminate__.remote()
-        self.evaluator.__ray_terminate__.remote()
         self.update_thread.stopped = True

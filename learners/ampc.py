@@ -74,6 +74,7 @@ class AMPCLearner(object):
         self.preprocessor.set_params(params)
 
     def model_rollout_for_policy_update(self, start_obses):
+        start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses, self.args.training_task)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses

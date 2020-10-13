@@ -40,6 +40,7 @@ class OffPolicyWorker(object):
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
                                          gamma=self.args.gamma)
 
+        self.explore_sigma = self.args.explore_sigma
         self.iteration = 0
         self.num_sample = 0
         self.sample_times = 0
@@ -88,6 +89,8 @@ class OffPolicyWorker(object):
             processed_obs = self.preprocessor.process_obs(self.obs)
             judge_is_nan([processed_obs])
             action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+            if self.explore_sigma is not None:
+                action += np.random.normal(0, self.explore_sigma, np.shape(action))
             try:
                 judge_is_nan([action])
             except ValueError:

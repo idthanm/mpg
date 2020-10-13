@@ -77,11 +77,14 @@ def built_ampc_parser():
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
     parser.add_argument("--worker_log_interval", type=int, default=5)
+    parser.add_argument('--explore_sigma', type=float, default=None)
 
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=128)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_alpha', type=float, default=0.6)
+    parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument("--buffer_log_interval", type=int, default=40000)
 
     # tester and evaluator
@@ -145,7 +148,7 @@ def main(alg_name):
     args = built_parser(alg_name)
     logger.info('begin training agents with parameter {}'.format(str(args)))
     if args.mode == 'training':
-        ray.init(redis_max_memory=512 * 1024 * 1024, object_store_memory=5120 * 1024 * 1024)
+        ray.init(object_store_memory=5120*1024*1024)
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
