@@ -96,7 +96,7 @@ class AMPCLearner(object):
             punish_terms_sum += punish_terms
 
         obj_loss = -self.tf.reduce_mean(rewards_sum)
-        punish_term = self.tf.reduce_sum(punish_terms_sum)
+        punish_term = self.tf.reduce_mean(punish_terms_sum)
         punish_loss = self.tf.stop_gradient(pf) * punish_term
         total_loss = obj_loss + punish_loss
 
