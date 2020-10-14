@@ -73,51 +73,70 @@ class AMPCLearner(object):
     def set_ppc_params(self, params):
         self.preprocessor.set_params(params)
 
-    def model_rollout_for_policy_update(self, start_obses):
+    def punish_factor_schedule(self, ite):
+        init_pf = self.args.init_punish_factor
+        interval = self.args.pf_enlarge_interval
+        amplifier = self.args.pf_amplifier
+        pf = init_pf * self.tf.pow(amplifier, self.tf.cast(ite//interval, self.tf.float32))
+        return pf
+
+    def model_rollout_for_policy_update(self, start_obses, ite):
         start_obses = self.tf.tile(start_obses, [self.M, 1])
         self.model.reset(start_obses, self.args.training_task)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
+        punish_terms_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses
+        pf = self.punish_factor_schedule(ite)
 
         for _ in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-            obses, rewards = self.model.rollout_out(actions)
+            obses, rewards, punish_terms = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
+            punish_terms_sum += punish_terms
 
-        policy_loss = -self.tf.reduce_mean(rewards_sum)
+        obj_loss = -self.tf.reduce_mean(rewards_sum)
+        punish_term = self.tf.reduce_sum(punish_terms_sum)
+        punish_loss = self.tf.stop_gradient(pf) * punish_term
+        total_loss = obj_loss + punish_loss
 
-        return policy_loss
+        return obj_loss, punish_term, punish_loss, total_loss, pf
 
     @tf.function
-    def policy_forward_and_backward(self, mb_obs):
+    def policy_forward_and_backward(self, mb_obs, ite):
         with self.tf.GradientTape() as tape:
-            policy_loss = self.model_rollout_for_policy_update(mb_obs)
+            obj_loss, punish_term, punish_loss, total_loss, pf = self.model_rollout_for_policy_update(mb_obs, ite)
 
         with self.tf.name_scope('policy_gradient') as scope:
-            policy_gradient = tape.gradient(policy_loss, self.policy_with_value.policy.trainable_weights)
-            return policy_gradient, policy_loss
+            policy_gradient = tape.gradient(total_loss, self.policy_with_value.policy.trainable_weights)
+            return policy_gradient, obj_loss, punish_term, punish_loss, total_loss, pf
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.policy_forward_and_backward(mb_obs)
+        self.policy_forward_and_backward(mb_obs, self.tf.convert_to_tensor(0, self.tf.int32))
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
     def compute_gradient(self, samples, rb, indexs, iteration):
         self.get_batch_data(samples, rb, indexs)
         mb_obs = self.batch_data['batch_obs']
+        iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
 
         with self.policy_gradient_timer:
-            policy_gradient, policy_loss = self.policy_forward_and_backward(mb_obs)
+            policy_gradient, obj_loss, punish_term, punish_loss, total_loss, pf =\
+                self.policy_forward_and_backward(mb_obs, iteration)
             policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
                                                                                 self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,
             pg_time=self.policy_gradient_timer.mean,
-            policy_loss=policy_loss.numpy(),
+            obj_loss=obj_loss.numpy(),
+            punish_term=punish_term.numpy(),
+            punish_loss=punish_loss.numpy(),
+            total_loss=total_loss.numpy(),
+            punish_factor=pf.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
         ))
 
