@@ -47,11 +47,11 @@ def built_ampc_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[0],
+                           test_iter_list=[90000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=70))
+                           fixed_steps=150))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -122,13 +122,13 @@ def built_ampc_parser():
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_updated_steps', type=int, default=100000)
-    parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=2)
-    parser.add_argument('--num_buffers', type=int, default=1)
+    parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--num_learners', type=int, default=10)
+    parser.add_argument('--num_buffers', type=int, default=2)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=1500)
-    parser.add_argument("--save_interval", type=int, default=2000)
+    parser.add_argument("--eval_interval", type=int, default=5000)
+    parser.add_argument("--save_interval", type=int, default=5000)
     parser.add_argument("--log_interval", type=int, default=100)
 
     # IO
