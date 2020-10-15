@@ -51,7 +51,7 @@ def built_ampc_parser():
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=150))
+                           fixed_steps=100))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -73,7 +73,7 @@ def built_ampc_parser():
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument("--gamma", type=float, default=1.)
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
-    parser.add_argument("--init_punish_factor", type=float, default=1./50)
+    parser.add_argument("--init_punish_factor", type=float, default=0.1)
     parser.add_argument("--pf_enlarge_interval", type=int, default=10000)
     parser.add_argument("--pf_amplifier", type=float, default=1.)
 
