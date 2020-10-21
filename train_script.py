@@ -47,11 +47,11 @@ def built_ampc_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[90000],
+                           test_iter_list=[150000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=100))
+                           fixed_steps=80))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -70,10 +70,10 @@ def built_ampc_parser():
     # learner
     parser.add_argument("--alg_name", default='AMPC')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[15])
     parser.add_argument("--gamma", type=float, default=1.)
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
-    parser.add_argument("--init_punish_factor", type=float, default=0.1)
+    parser.add_argument("--init_punish_factor", type=float, default=2.)
     parser.add_argument("--pf_enlarge_interval", type=int, default=10000)
     parser.add_argument("--pf_amplifier", type=float, default=1.)
 
@@ -98,8 +98,8 @@ def built_ampc_parser():
 
     # policy and model
     parser.add_argument("--policy_only", default=True, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 150000, 3e-6])
+    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 150000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument("--deterministic_policy", default=True, action='store_true')
@@ -121,7 +121,7 @@ def built_ampc_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=100000)
+    parser.add_argument('--max_updated_steps', type=int, default=150000)
     parser.add_argument('--num_workers', type=int, default=2)
     parser.add_argument('--num_learners', type=int, default=10)
     parser.add_argument('--num_buffers', type=int, default=2)
