@@ -73,7 +73,7 @@ def built_ampc_parser():
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[15])
     parser.add_argument("--gamma", type=float, default=1.)
     parser.add_argument("--gradient_clip_norm", type=float, default=10)
-    parser.add_argument("--init_punish_factor", type=float, default=2.)
+    parser.add_argument("--init_punish_factor", type=float, default=10.)
     parser.add_argument("--pf_enlarge_interval", type=int, default=10000)
     parser.add_argument("--pf_amplifier", type=float, default=1.)
 
