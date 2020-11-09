@@ -86,7 +86,6 @@ class Evaluator(object):
                 reward_info_dict_list.append(info['reward_info'])
                 if render: self.env.render()
                 reward_list.append(reward)
-        self.env.close()
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
