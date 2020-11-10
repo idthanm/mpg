@@ -101,8 +101,7 @@ class Preprocessor(object):
 
     def np_process_obses(self, obses):
         if self.obs_ptype == 'normalize':
-            obses = np.clip((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
-                                      self.clipob)
+            obses = np.clip((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
             return obses
         elif self.obs_ptype == 'scale':
             return obses * self.obs_factor

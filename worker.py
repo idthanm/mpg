@@ -8,10 +8,11 @@
 # =====================================
 
 import logging
+import os
 
 import gym
 import numpy as np
-
+from utils.monitor import Monitor
 from preprocessor import Preprocessor
 from utils.misc import judge_is_nan
 
@@ -21,38 +22,41 @@ logging.basicConfig(level=logging.INFO)
 # logger.setLevel(logging.INFO)
 
 
-class OffPolicyWorker(object):
-    """just for sample"""
+class OnPolicyWorker(object):
+    """
+    Act as both actor and learner
+    """
+    import tensorflow as tf
+    # tf.config.experimental.set_visible_devices([], 'GPU')
 
-    def __init__(self, policy_cls, env_id, args, worker_id):
+    def __init__(self, policy_cls, learner_cls, env_id, args, worker_id):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        self.num_agent = self.args.num_agent
-        self.env = gym.make(env_id, num_agent=self.num_agent, num_future_data=self.args.num_future_data)
+        env = gym.make(env_id)
+        self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
+        self.learner = learner_cls(policy_cls, self.args)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
-        self.batch_size = self.args.batch_size
+        self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.args.num_agent)
+                                         gamma=self.args.gamma)
+        self.log_dir = self.args.log_dir
 
-        self.explore_sigma = self.args.explore_sigma
-        self.iteration = 0
-        self.num_sample = 0
-        self.sample_times = 0
+        if not os.path.exists(self.log_dir):
+            os.makedirs(self.log_dir)
+
         self.stats = {}
         logger.info('Worker initialized')
 
     def get_stats(self):
-        self.stats.update(dict(worker_id=self.worker_id,
-                               num_sample=self.num_sample,
-                               # ppc_params=self.get_ppc_params()
-                               )
-                          )
         return self.stats
+
+    def shuffle(self):
+        self.learner.shuffle()
 
     def save_weights(self, save_dir, iteration):
         self.policy_with_value.save_weights(save_dir, iteration)
@@ -67,7 +71,6 @@ class OffPolicyWorker(object):
         return self.policy_with_value.set_weights(weights)
 
     def apply_gradients(self, iteration, grads):
-        self.iteration = iteration
         self.policy_with_value.apply_gradients(iteration, grads)
 
     def get_ppc_params(self):
@@ -84,34 +87,31 @@ class OffPolicyWorker(object):
 
     def sample(self):
         batch_data = []
-        for _ in range(int(self.batch_size/self.num_agent)):
+        epinfos = []
+        for _ in range(self.sample_batch_size):
+            judge_is_nan(self.obs)
             processed_obs = self.preprocessor.process_obs(self.obs)
-            judge_is_nan([processed_obs])
-            action, logp = self.policy_with_value.compute_action(processed_obs)
-            if self.explore_sigma is not None:
-                action += np.random.normal(0, self.explore_sigma, np.shape(action))
-            try:
-                judge_is_nan([action])
-            except ValueError:
-                print('processed_obs', processed_obs)
-                print('preprocessor_params', self.preprocessor.get_params())
-                print('policy_weights', self.policy_with_value.policy.trainable_weights)
-                action, logp = self.policy_with_value.compute_action(processed_obs)
-                judge_is_nan([action])
-                raise ValueError
-            obs_tp1, reward, self.done, info = self.env.step(action.numpy())
+            action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+            # print(action, logp)
+            judge_is_nan(action)
+            judge_is_nan(logp)
+            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            for i in range(self.num_agent):
-                batch_data.append((self.obs[i], action[i].numpy(), reward[i], obs_tp1[i], self.done[i]))
-            self.obs = self.env.reset()
 
-        if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
-            logger.info('Worker_info: {}'.format(self.get_stats()))
+            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, logp[0].numpy()))
+            self.obs = self.env.reset() if self.done else obs_tp1.copy()
+            maybeepinfo = info.get('episode')
+            if maybeepinfo:
+                epinfos.append(maybeepinfo)
+        return batch_data, epinfos
 
-        self.num_sample += len(batch_data)
-        self.sample_times += 1
-        return batch_data
+    def put_data_into_learner(self, batch_data, epinfos):
+        self.learner.set_ppc_params(self.get_ppc_params())
+        self.learner.get_batch_data(batch_data, epinfos)
 
-    def sample_with_count(self):
-        batch_data = self.sample()
-        return batch_data, len(batch_data)
+    def compute_gradient_over_ith_minibatch(self, i):
+        self.learner.set_weights(self.get_weights())
+        grad = self.learner.compute_gradient_over_ith_minibatch(i)
+        learner_stats = self.learner.get_stats()
+        self.stats.update(learner_stats)
+        return grad

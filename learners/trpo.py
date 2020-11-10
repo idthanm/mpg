@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # =====================================
-# @Time    : 2020/6/24
+# @Time    : 2020/11/9
 # @Author  : Yang Guan (Tsinghua Univ.)
-# @FileName: __init__.py.py
+# @FileName: trpo.py
 # =====================================

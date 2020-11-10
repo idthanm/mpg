@@ -29,7 +29,7 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id, num_agent=self.args.num_eval_agent, num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id)
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
         if self.args.mode == 'training':
@@ -41,7 +41,7 @@ class Evaluator(object):
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale_factor, self.args.reward_scale_factor,
-                                         gamma=self.args.gamma, num_agent=self.args.num_eval_agent)
+                                         gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)
         self.stats = {}
@@ -72,23 +72,23 @@ class Evaluator(object):
         if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
-                processed_obs = self.preprocessor.tf_process_obses(obs)
+                processed_obs = self.preprocessor.tf_process_obses(obs[np.newaxis, :])
                 action = self.policy_with_value.compute_mode(processed_obs)
                 obs_list.append(obs[0])
                 action_list.append(action[0])
-                obs, reward, done, info = self.env.step(action.numpy())
+                obs, reward, done, info = self.env.step(action[0].numpy())
                 if render: self.env.render()
-                reward_list.append(reward[0])
+                reward_list.append(reward)
                 info_list.append(info)
         else:
             while not done:
-                processed_obs = self.preprocessor.tf_process_obses(obs)
+                processed_obs = self.preprocessor.tf_process_obses(obs[np.newaxis, :])
                 action = self.policy_with_value.compute_mode(processed_obs)
                 obs_list.append(obs[0])
                 action_list.append(action[0])
-                obs, reward, done, info = self.env.step(action.numpy())
+                obs, reward, done, info = self.env.step(action[0].numpy())
                 if render: self.env.render()
-                reward_list.append(reward[0])
+                reward_list.append(reward)
                 info_list.append(info)
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
@@ -116,64 +116,12 @@ class Evaluator(object):
             out.update({key: sum(value_list)/len(value_list)})
         return metrics_list, out
 
-    def run_n_episodes_parallel(self, n):
-        logger.info('logging {} episodes in parallel'.format(n))
-        metrics_list = []
-        obses_list = []
-        actions_list = []
-        rewards_list = []
-        obses = self.env.reset()
-        if self.args.eval_render: self.env.render()
-        for _ in range(self.args.fixed_steps):
-            processed_obses = self.preprocessor.tf_process_obses(obses)
-            actions = self.policy_with_value.compute_mode(processed_obses)
-            obses_list.append(obses)
-            actions_list.append(actions)
-            obses, rewards, dones, infos = self.env.step(actions.numpy())
-            if self.args.eval_render: self.env.render()
-            rewards_list.append(rewards)
-        for i in range(n):
-            obs_list = [obses[i] for obses in obses_list]
-            action_list = [actions[i] for actions in actions_list]
-            reward_list = [rewards[i] for rewards in rewards_list]
-            episode_return = sum(reward_list)
-            episode_len = len(reward_list)
-            info_dict = dict()
-            info_dict.update(dict(obs_list=np.array(obs_list),
-                                  action_list=np.array(action_list),
-                                  reward_list=np.array(reward_list),
-                                  episode_return=episode_return,
-                                  episode_len=episode_len))
-            metrics_list.append(self.metrics_for_an_episode(info_dict))
-        out = {}
-        for key in metrics_list[0].keys():
-            value_list = list(map(lambda x: x[key], metrics_list))
-            out.update({key: sum(value_list) / len(value_list)})
-        return metrics_list, out
-
 
     def metrics_for_an_episode(self, episode_info):  # user defined, transform episode info dict to metric dict
-        key_list = ['episode_return', 'episode_len', 'delta_y_mse', 'delta_phi_mse', 'delta_v_mse',
-                    'stationary_rew_mean', 'steer_mse', 'acc_mse']
+        key_list = ['episode_return', 'episode_len']
         episode_return = episode_info['episode_return']
         episode_len = episode_info['episode_len']
-        delta_v_list = list(map(lambda x: x[0], episode_info['obs_list']))
-        delta_y_list = list(map(lambda x: x[3], episode_info['obs_list']))
-        delta_phi_list = list(map(lambda x: x[4], episode_info['obs_list']))
-        steer_list = list(map(lambda x: x[0]*1.2 * np.pi / 9, episode_info['action_list']))
-        acc_list = list(map(lambda x: x[1]*3., episode_info['action_list']))
-
-        rew_list = episode_info['reward_list']
-        stationary_rew_mean = sum(rew_list[20:])/len(rew_list[20:])
-
-        delta_y_mse = np.sqrt(np.mean(np.square(np.array(delta_y_list))))
-        delta_phi_mse = np.sqrt(np.mean(np.square(np.array(delta_phi_list))))
-        delta_v_mse = np.sqrt(np.mean(np.square(np.array(delta_v_list))))
-        steer_mse = np.sqrt(np.mean(np.square(np.array(steer_list))))
-        acc_mse = np.sqrt(np.mean(np.square(np.array(acc_list))))
-
-        value_list = [episode_return, episode_len, delta_y_mse, delta_phi_mse, delta_v_mse,
-                      stationary_rew_mean, steer_mse, acc_mse]
+        value_list = [episode_return, episode_len]
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
@@ -185,10 +133,7 @@ class Evaluator(object):
     def run_evaluation(self, iteration):
         with self.eval_timer:
             self.iteration = iteration
-            if self.args.num_eval_agent == 1:
-                n_metrics_list, mean_metric_dict = self.run_n_episodes(self.args.num_eval_episode)
-            else:
-                n_metrics_list, mean_metric_dict = self.run_n_episodes_parallel(self.args.num_eval_episode)
+            n_metrics_list, mean_metric_dict = self.run_n_episodes(self.args.num_eval_episode)
             with self.writer.as_default():
                 for key, val in mean_metric_dict.items():
                     self.tf.summary.scalar("evaluation/{}".format(key), val, step=self.iteration)
