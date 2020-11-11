@@ -64,42 +64,66 @@ class PolicyWithValue(object):
         self.value_optimizer.apply_gradients(zip(value_grad, self.value.trainable_weights))
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
 
-    def _logits2action(self, logits):
+    def _logits2dist(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        base_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
-        act_dist = (
-            self.tfp.distributions.TransformedDistribution(
-                distribution=base_dist,
-                bijector=self.tfb.Chain(
-                    [self.tfb.Affine(scale_identity_multiplier=self.args.action_range),
-                     self.tfb.Tanh()]) if self.args.action_range is not None else self.tfb.Identity()
-            ))
-        actions = act_dist.sample()
-        logps = act_dist.log_prob(actions)
-        return actions, logps
-
-    def _logits_actions2logps(self, logits, actions):
-        mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
-        base_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
-        act_dist = (
-            self.tfp.distributions.TransformedDistribution(
-                distribution=base_dist,
-                bijector=self.tfb.Chain(
-                    [self.tfb.Affine(scale_identity_multiplier=(self.args.action_range+1e-6)),
-                     self.tfb.Tanh()]) if self.args.action_range is not None else self.tfb.Identity()
-            ))
-        logps = act_dist.log_prob(actions)
-        return logps
+        act_dist = self.tfd.MultivariateNormalDiag(mean, self.tf.exp(log_std))
+        if self.args.action_range is not None:
+            act_dist = (
+                self.tfp.distributions.TransformedDistribution(
+                    distribution=act_dist,
+                    bijector=self.tfb.Chain(
+                        [self.tfb.Affine(scale_identity_multiplier=self.args.action_range),
+                         self.tfb.Tanh()])
+                ))
+        return act_dist
 
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
-            return self._logits2action(logits)
+            act_dist = self._logits2dist(logits)
+            actions = act_dist.sample()
+            logps = act_dist.log_prob(actions)
+            return actions, logps
 
     def compute_logps(self, obs, actions):
         with self.tf.name_scope('compute_logps') as scope:
             logits = self.policy(obs)
-            return self._logits_actions2logps(logits, actions)
+            act_dist = self._logits2dist(logits)
+            if self.args.action_range is not None:
+                act_dist = (
+                    self.tfp.distributions.TransformedDistribution(
+                        distribution=act_dist,
+                        bijector=self.tfb.Affine(scale_identity_multiplier=(1. + 1e-6))
+                    ))
+            return act_dist.log_prob(actions)
+
+    def compute_entropy(self, obs):
+        with self.tf.name_scope('compute_entropy') as scope:
+            logits = self.policy(obs)
+            act_dist = self._logits2dist(logits)
+            try:
+                entropy = self.tf.reduce_mean(act_dist.entropy())
+            except NotImplementedError:
+                actions = act_dist.sample()
+                logps = act_dist.log_prob(actions)
+                entropy = -self.tf.reduce_mean(logps)
+            finally:
+                return entropy
+
+    def compute_kl(self, obs, other):  # KL(other||ego)
+        with self.tf.name_scope('compute_entropy') as scope:
+            logits = self.policy(obs)
+            act_dist = self._logits2dist(logits)
+            other_act_dist = self._logits2dist(self.tf.stop_gradient(other.policy(obs)))
+            try:
+                kl = self.tf.reduce_mean(other_act_dist.kl_divergence(act_dist))
+            except NotImplementedError:
+                other_actions = other_act_dist.sample()
+                other_logps = other_act_dist.log_prob(other_actions)
+                logps = act_dist.compute_logps(obs, other_actions)
+                kl = self.tf.reduce_mean(other_logps - logps)
+            finally:
+                return kl
 
     def compute_mode(self, obs):
         logits = self.policy(obs)

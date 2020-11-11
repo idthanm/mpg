@@ -45,14 +45,17 @@ class PPOLearner(object):
                'batch_rewards': np.asarray(list(map(lambda x: x[2], batch_data)), dtype=np.float32),
                'batch_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
                'batch_dones': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
-               'batch_logps': np.asarray(list(map(lambda x: x[5], batch_data)), dtype=np.float32)}
+               'batch_logps': np.asarray(list(map(lambda x: x[5], batch_data)), dtype=np.float32),
+               }
+
         return tmp
 
     def get_batch_data(self, batch_data, epinfos):
         self.batch_data = self.post_processing(batch_data)
-        batch_advs, batch_tdlambda_returns = self.compute_advantage()
+        batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
         self.batch_data.update(dict(batch_advs=batch_advs,
-                                    batch_tdlambda_returns=batch_tdlambda_returns))
+                                    batch_tdlambda_returns=batch_tdlambda_returns,
+                                    batch_values=batch_values))
         self.shuffle()
         self.epinfobuf.extend(epinfos)
         self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
@@ -90,15 +93,14 @@ class PPOLearner(object):
             delta = processed_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
             batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
         batch_tdlambda_returns = batch_advs + batch_values
-        return batch_advs, batch_tdlambda_returns
+        return batch_advs, batch_tdlambda_returns, batch_values
 
     @tf.function
-    def value_forward_and_backward(self, mb_obs, target):
+    def value_forward_and_backward(self, mb_obs, target, mb_oldvs):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             v_pred = self.policy_with_value.compute_vf(processed_obses)
-            OLDVPRED = self.tf.stop_gradient(v_pred)
-            vpredclipped = OLDVPRED + self.tf.clip_by_value(v_pred - OLDVPRED,
+            vpredclipped = mb_oldvs + self.tf.clip_by_value(v_pred - mb_oldvs,
                                                             -self.args.ppo_loss_clip,
                                                             self.args.ppo_loss_clip)
             v_loss1 = self.tf.square(v_pred - target)
@@ -112,15 +114,15 @@ class PPOLearner(object):
     def policy_forward_and_backward(self, mb_obs, mb_actions, mb_neglogps, mb_advs):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
-            _, logps = self.policy_with_value.compute_action(processed_obses)
-            policy_entropy = -self.tf.reduce_mean(logps)
+            policy_entropy = self.policy_with_value.compute_entropy(processed_obses)
             current_neglogp = -self.policy_with_value.compute_logps(processed_obses, mb_actions)
             ratio = self.tf.exp(mb_neglogps - current_neglogp)
             pg_loss1 = -ratio * mb_advs
             pg_loss2 = -self.tf.clip_by_value(ratio, 1 - self.args.ppo_loss_clip, 1 + self.args.ppo_loss_clip) * mb_advs
-            pg_loss = self.tf.reduce_mean(self.tf.maximum(pg_loss1, pg_loss2))
+            clipped_loss = self.tf.reduce_mean(self.tf.maximum(pg_loss1, pg_loss2))
+            pg_loss = clipped_loss - self.args.ent_coef*policy_entropy
         policy_gradient = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
-        return pg_loss, policy_gradient, policy_entropy, current_neglogp
+        return pg_loss, policy_gradient, clipped_loss, policy_entropy, current_neglogp
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
@@ -129,14 +131,16 @@ class PPOLearner(object):
         mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
         mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
         mb_neglogps = -self.batch_data['batch_logps'][start_idx: end_idx]
+        mb_oldvs = self.batch_data['batch_values'][start_idx: end_idx]
+
         with self.v_gradient_timer:
-            v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns)
+            v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
             judge_is_nan([v_loss])
             judge_is_nan(value_gradient)
             judge_is_nan([value_mean])
 
         with self.policy_gradient_timer:
-            pg_loss, policy_gradient, policy_entropy, current_neglogp = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+            pg_loss, policy_gradient, clipped_loss, policy_entropy, current_neglogp = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
             judge_is_nan([pg_loss])
             judge_is_nan(policy_gradient)
             judge_is_nan([policy_entropy])
@@ -150,6 +154,7 @@ class PPOLearner(object):
             pg_time=self.policy_gradient_timer.mean,
             v_loss=v_loss.numpy(),
             policy_loss=pg_loss.numpy(),
+            clipped_loss=clipped_loss.numpy(),
             policy_entropy=policy_entropy.numpy(),
             value_mean=value_mean.numpy(),
             target_mean=np.mean(mb_tdlambda_returns),

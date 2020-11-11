@@ -75,6 +75,7 @@ def built_PPO_parser():
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--ppo_loss_clip", type=float, default=0.2)
     parser.add_argument("--mini_batch_size", type=int, default=64)
+    parser.add_argument("--ent_coef", type=float, default=1.)
 
     # worker
     parser.add_argument('--sample_batch_size', type=int, default=2048)
@@ -100,7 +101,6 @@ def built_PPO_parser():
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale", type=float, default=1/8)
     parser.add_argument("--reward_shift", type=float, default=8.)
-
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
