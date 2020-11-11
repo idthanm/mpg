@@ -33,7 +33,7 @@ class PPOLearner(object):
         self.stats = {}
         self.epinfobuf = deque(maxlen=100)
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
     def get_stats(self):
@@ -97,7 +97,13 @@ class PPOLearner(object):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             v_pred = self.policy_with_value.compute_vf(processed_obses)
-            v_loss = 0.5 * self.tf.reduce_mean(self.tf.square(v_pred - target))
+            OLDVPRED = self.tf.stop_gradient(v_pred)
+            vpredclipped = OLDVPRED + self.tf.clip_by_value(v_pred - OLDVPRED,
+                                                            -self.args.ppo_loss_clip,
+                                                            self.args.ppo_loss_clip)
+            v_loss1 = self.tf.square(v_pred - target)
+            v_loss2 = self.tf.square(vpredclipped - target)
+            v_loss = .5 * self.tf.reduce_mean(self.tf.maximum(v_loss1, v_loss2))
             value_mean = self.tf.reduce_mean(v_pred)
         value_gradient = tape.gradient(v_loss, self.policy_with_value.value.trainable_weights)
         return v_loss, value_gradient, value_mean
@@ -114,7 +120,7 @@ class PPOLearner(object):
             pg_loss2 = -self.tf.clip_by_value(ratio, 1 - self.args.ppo_loss_clip, 1 + self.args.ppo_loss_clip) * mb_advs
             pg_loss = self.tf.reduce_mean(self.tf.maximum(pg_loss1, pg_loss2))
         policy_gradient = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
-        return pg_loss, policy_gradient, policy_entropy
+        return pg_loss, policy_gradient, policy_entropy, current_neglogp
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
@@ -125,21 +131,33 @@ class PPOLearner(object):
         mb_neglogps = -self.batch_data['batch_logps'][start_idx: end_idx]
         with self.v_gradient_timer:
             v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns)
+            judge_is_nan([v_loss])
+            judge_is_nan(value_gradient)
+            judge_is_nan([value_mean])
 
         with self.policy_gradient_timer:
-            pg_loss, policy_gradient, policy_entropy = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+            pg_loss, policy_gradient, policy_entropy, current_neglogp = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+            judge_is_nan([pg_loss])
+            judge_is_nan(policy_gradient)
+            judge_is_nan([policy_entropy])
+            judge_is_nan([current_neglogp])
+
         value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
-            q_timer=self.v_gradient_timer.mean,
+            v_timer=self.v_gradient_timer.mean,
             pg_time=self.policy_gradient_timer.mean,
             v_loss=v_loss.numpy(),
             policy_loss=pg_loss.numpy(),
             policy_entropy=policy_entropy.numpy(),
             value_mean=value_mean.numpy(),
+            target_mean=np.mean(mb_tdlambda_returns),
             value_gradient_norm=value_gradient_norm.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
         ))
+        if self.args.reward_preprocess_type == 'normalize':
+            self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
+                                   ret_rms_mean=self.preprocessor.ret_rms.mean))
         gradient_tensor = value_gradient + policy_gradient
         return list(map(lambda x: x.numpy(), gradient_tensor))

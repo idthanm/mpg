@@ -61,9 +61,9 @@ class AllReduceOptimizer(object):
         logger.info('begin the {}-th optimizing step'.format(self.iteration))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
         with self.sampling_timer:
-            for worker in self.workers['remote_workers']:
-                batch_data, epinfos = ray.get(worker.sample.remote())
-                worker.put_data_into_learner.remote(batch_data, epinfos)
+            batch_data_with_info = ray.get([worker.sample.remote() for worker in self.workers['remote_workers']])
+            for i, worker in enumerate(self.workers['remote_workers']):
+                worker.put_data_into_learner.remote(*batch_data_with_info[i])
         with self.optimizing_timer:
             all_stats = [[] for _ in range(self.args.num_workers)]
             for i in range(self.args.epoch):

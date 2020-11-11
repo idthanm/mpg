@@ -16,8 +16,8 @@ from tensorflow.keras.layers import Dense
 class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
         super(MLPNet, self).__init__(name=kwargs['name'])
-        self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation='elu', dtype=tf.float32)
-        self.hidden = Sequential([Dense(num_hidden_units, activation='elu', dtype=tf.float32) for _ in range(num_hidden_layers-1)])
+        self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation='tanh', dtype=tf.float32)
+        self.hidden = Sequential([Dense(num_hidden_units, activation='tanh', dtype=tf.float32) for _ in range(num_hidden_layers-1)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.outputs = Dense(output_dim, activation=output_activation, dtype=tf.float32)
         self.build(input_shape=(None, input_dim))
@@ -27,27 +27,6 @@ class MLPNet(Model):
         x = self.hidden(x)
         x = self.outputs(x)
         return x
-
-
-class AlphaModel(Model):
-    def __init__(self, **kwargs):
-        super(AlphaModel, self).__init__(name=kwargs['name'])
-        self.log_alpha = tf.Variable(0., dtype=tf.float32)
-
-
-def test_alpha():
-    import numpy as np
-    alpha_model = AlphaModel(name='alpha')
-    print(alpha_model.trainable_weights)
-    print(alpha_model.get_weights())
-    print(alpha_model.alpha)
-    b = alpha_model.alpha
-    alpha_model.set_weights(np.array([3]))
-    print(b)
-
-    with tf.GradientTape() as tape:
-        b = 3.*alpha_model.alpha
-    print(tape.gradient(b, alpha_model.trainable_weights[0]))
 
 
 def test_attrib():

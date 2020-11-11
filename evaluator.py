@@ -40,7 +40,7 @@ class Evaluator(object):
             os.makedirs(self.log_dir)
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)

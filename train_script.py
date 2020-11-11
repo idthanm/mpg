@@ -65,7 +65,7 @@ def built_PPO_parser():
 
     # env
     parser.add_argument("--env_id", default='Pendulum-v0')
-    parser.add_argument("--action_range", type=float, default=None)
+    parser.add_argument("--action_range", type=float, default=2.)
 
     # learner
     parser.add_argument("--alg_name", default='PPO')
@@ -86,24 +86,26 @@ def built_PPO_parser():
     parser.add_argument("--eval_render", type=bool, default=True)
 
     # policy and model
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 100000, 3e-4])
+    parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 100000, 3e-4])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
+    parser.add_argument('--num_hidden_units', type=int, default=64)
     parser.add_argument("--policy_out_activation", type=str, default='linear')
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default=None)
-    parser.add_argument("--obs_scale_factor", type=list, default=None)
+    parser.add_argument("--obs_scale", type=list, default=None)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=0.2)
+    parser.add_argument("--reward_scale", type=float, default=1/8)
+    parser.add_argument("--reward_shift", type=float, default=8.)
+
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=2)
+    parser.add_argument('--num_workers', type=int, default=8)
     parser.add_argument("--eval_interval", type=int, default=5)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--log_interval", type=int, default=1)
