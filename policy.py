@@ -120,7 +120,7 @@ class PolicyWithValue(object):
             except NotImplementedError:
                 other_actions = other_act_dist.sample()
                 other_logps = other_act_dist.log_prob(other_actions)
-                logps = act_dist.compute_logps(obs, other_actions)
+                logps = self.compute_logps(obs, other_actions)
                 kl = self.tf.reduce_mean(other_logps - logps)
             finally:
                 return kl

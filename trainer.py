@@ -19,14 +19,14 @@ logger.setLevel(logging.INFO)
 
 
 class Trainer(object):
-    def __init__(self, policy_cls, learner_cls, buffer_cls, optimizer_cls, args):
+    def __init__(self, policy_cls, worker_cls, learner_cls, buffer_cls, optimizer_cls, args):
         self.args = args
         self.evaluator = ray.remote(num_cpus=1)(Evaluator).remote(policy_cls, self.args.env_id, self.args)
 
         if self.args.off_policy:
-            # self.local_worker = OffPolicyWorker(policy_cls, self.args.env_id, self.args, 0)
+            # self.local_worker = worker_cls(policy_cls, self.args.env_id, self.args, 0)
             # self.remote_workers = [
-            #     ray.remote(num_cpus=1)(OffPolicyWorker).remote(policy_cls, self.args.env_id, self.args, i + 1)
+            #     ray.remote(num_cpus=1)(worker_cls).remote(policy_cls, self.args.env_id, self.args, i + 1)
             #     for i in range(self.args.num_workers)]
             self.workers = dict(local_worker=self.local_worker,
                                 remote_workers=self.remote_workers)
@@ -36,9 +36,9 @@ class Trainer(object):
                              for _ in range(self.args.num_learners)]
             self.optimizer = optimizer_cls(self.workers, self.learners, self.buffers, self.evaluator, self.args)
         else:
-            self.local_worker = OnPolicyWorker(policy_cls, learner_cls, self.args.env_id, self.args, 0)
+            self.local_worker = worker_cls(policy_cls, learner_cls, self.args.env_id, self.args, 0)
             self.remote_workers = [
-                ray.remote(num_cpus=1)(OnPolicyWorker).remote(policy_cls, learner_cls, self.args.env_id, self.args, i+1)
+                ray.remote(num_cpus=1)(worker_cls).remote(policy_cls, learner_cls, self.args.env_id, self.args, i+1)
                 for i in range(self.args.num_workers)]
             self.workers = dict(local_worker=self.local_worker,
                                 remote_workers=self.remote_workers)

@@ -11,6 +11,7 @@ import random
 import time
 
 import numpy as np
+import tensorflow as tf
 
 
 def safemean(xs):
@@ -34,6 +35,33 @@ def judge_is_nan(list_of_np_or_tensor):
             if np.any(np.isnan(m)):
                 print(list_of_np_or_tensor)
                 raise ValueError
+
+
+def flatvars(var_list):
+    if type(var_list[0]) is np.ndarray:
+        return np.concatenate([np.reshape(v, [-1]) for v in var_list], axis=0)
+    else:
+        return tf.concat([tf.reshape(v, [-1]) for v in var_list], axis=0)
+
+
+def get_shapes(var_list):
+    if type(var_list[0]) is np.ndarray:
+        return [list(var.shape) for var in var_list]
+    else:
+        return [var.get_shape().as_list() for var in var_list]
+
+
+def unflatvars(flatvars, shapes):
+    start = 0
+    unflat_vars = []
+    for shape in shapes:
+        sz = int(np.prod(shape))
+        if type(flatvars) is np.ndarray:
+            unflat_vars.append(np.reshape(flatvars[start:start + sz], shape))
+        else:
+            unflat_vars.append(tf.reshape(flatvars[start:start + sz], shape))
+        start += sz
+    return unflat_vars
 
 
 class TimerStat:
