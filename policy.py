@@ -9,7 +9,9 @@
 
 from gym import spaces
 
-from model import MLPNet
+from model import MLPNet, MLPNetDSAC
+
+NAME2MODELCLS = dict([('MLP', MLPNet), ('DSAC', MLPNetDSAC)])
 
 
 class PolicyWithValue(object):
@@ -25,9 +27,11 @@ class PolicyWithValue(object):
         obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
         n_hiddens, n_units = self.args.num_hidden_layers, self.args.num_hidden_units
-        self.policy = MLPNet(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy',
-                             output_activation=self.args.policy_out_activation)
-        self.value = MLPNet(obs_dim, n_hiddens, n_units, 1, name='value')
+        value_model_cls = NAME2MODELCLS[self.args.value_model_cls]
+        policy_model_cls = NAME2MODELCLS[self.args.policy_model_cls]
+        self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, act_dim * 2, name='policy',
+                                       output_activation=self.args.policy_out_activation)
+        self.value = value_model_cls(obs_dim, n_hiddens, n_units, 1, name='value')
         self.models = (self.policy, self.value,)
         policy_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.policy_lr_schedule)
         value_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.value_lr_schedule)

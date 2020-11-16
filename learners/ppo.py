@@ -20,6 +20,7 @@ logger.setLevel(logging.INFO)
 
 class PPOLearner(object):
     import tensorflow as tf
+    tf.config.experimental.set_visible_devices([], 'GPU')
 
     def __init__(self, policy_cls, args):
         self.args = args
@@ -85,7 +86,7 @@ class PPOLearner(object):
         n_steps = len(self.batch_data['batch_rewards'])
         processed_obses = self.preprocessor.np_process_obses(self.batch_data['batch_obs'])
         processed_rewards = self.preprocessor.np_process_rewards(self.batch_data['batch_rewards'])
-        batch_values = self.policy_with_value.value(processed_obses).numpy()[:, 0]  # len = n_steps + 1
+        batch_values = self.policy_with_value.compute_vf(processed_obses).numpy()[:, 0]  # len = n_steps + 1
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):
@@ -93,6 +94,7 @@ class PPOLearner(object):
             delta = processed_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
             batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
         batch_tdlambda_returns = batch_advs + batch_values
+
         return batch_advs, batch_tdlambda_returns, batch_values
 
     @tf.function

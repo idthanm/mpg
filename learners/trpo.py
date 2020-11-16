@@ -22,6 +22,7 @@ logger.setLevel(logging.INFO)
 
 class TRPOWorker(object):
     import tensorflow as tf
+    tf.config.experimental.set_visible_devices([], 'GPU')
 
     def __init__(self, policy_cls, learner_cls, env_id, args, worker_id):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
@@ -30,7 +31,6 @@ class TRPOWorker(object):
         env = gym.make(env_id)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.learner = learner_cls(policy_cls, self.args)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.old_policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.sample_batch_size = self.args.sample_batch_size

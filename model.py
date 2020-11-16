@@ -12,6 +12,8 @@ from tensorflow import Variable
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import Dense
 
+# tf.config.experimental.set_visible_devices([], 'GPU')
+
 
 class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
@@ -27,6 +29,29 @@ class MLPNet(Model):
         x = self.hidden(x)
         x = self.outputs(x)
         return x
+
+
+class MLPNetDSAC(Model):
+    def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
+        super(MLPNetDSAC, self).__init__(name=kwargs['name'])
+        self.first_ = Dense(num_hidden_units, input_shape=(None, input_dim), activation='tanh', dtype=tf.float32)
+        self.second_ = Dense(num_hidden_units, activation='tanh', dtype=tf.float32)
+        self.hidden_mean = Sequential([Dense(num_hidden_units, activation='tanh', dtype=tf.float32) for _ in range(3)])
+        self.hidden_logstd = Sequential([Dense(num_hidden_units, activation='tanh', dtype=tf.float32) for _ in range(3)])
+        output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
+        self.mean = Dense(int(output_dim/2), activation=output_activation, dtype=tf.float32)
+        self.logstd = Dense(int(output_dim/2), activation=output_activation, dtype=tf.float32)
+
+        self.build(input_shape=(None, input_dim))
+
+    def call(self, x, **kwargs):
+        x = self.first_(x)
+        x = self.second_(x)
+        mean = self.hidden_mean(x)
+        mean = self.mean(mean)
+        logstd = self.hidden_logstd(x)
+        logstd = self.logstd(logstd)
+        return tf.concat([mean, logstd], axis=-1)
 
 
 def test_attrib():
@@ -81,5 +106,13 @@ def test_memory2():
     time.sleep(10000)
 
 
+def test_dsac_net():
+    import numpy as np
+    net = MLPNetDSAC(3, 0, 256, 4, name='policy')
+    inpu = np.array([[1.,2., 3.]])
+    out = net(inpu)
+    print(out)
+
+
 if __name__ == '__main__':
-    test_alpha()
+    test_dsac_net()

@@ -27,7 +27,7 @@ class OnPolicyWorker(object):
     Act as both actor and learner
     """
     import tensorflow as tf
-    # tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.experimental.set_visible_devices([], 'GPU')
 
     def __init__(self, policy_cls, learner_cls, env_id, args, worker_id):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
