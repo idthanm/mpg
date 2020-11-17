@@ -68,13 +68,13 @@ def built_PPO_parser():
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
-    parser.add_argument("--action_range", type=float, default=action_range)
+    parser.add_argument("--action_range", type=float, default=None)
 
     # learner
     parser.add_argument("--alg_name", default='PPO')
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--lam", type=float, default=0.95)
-    parser.add_argument("--gradient_clip_norm", type=float, default=3)
+    parser.add_argument("--gradient_clip_norm", type=float, default=0.5)
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--ppo_loss_clip", type=float, default=0.2)
     parser.add_argument("--mini_batch_size", type=int, default=64)
@@ -91,11 +91,11 @@ def built_PPO_parser():
 
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
-    parser.add_argument("--policy_model_cls", type=str, default='DSAC')
+    parser.add_argument("--policy_model_cls", type=str, default='MLP')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 1000, 0])
     parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 1000, 0])
-    parser.add_argument('--num_hidden_layers', type=int, default=5)
-    parser.add_argument('--num_hidden_units', type=int, default=256)
+    parser.add_argument('--num_hidden_layers', type=int, default=2)
+    parser.add_argument('--num_hidden_units', type=int, default=64)
     parser.add_argument("--policy_out_activation", type=str, default='linear')
 
     # preprocessor
@@ -103,16 +103,16 @@ def built_PPO_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
     parser.add_argument("--obs_scale", type=list, default=None)
-    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale", type=float, default=0.2)
-    parser.add_argument("--reward_shift", type=float, default=0.)
+    parser.add_argument("--reward_preprocess_type", type=str, default=None)
+    parser.add_argument("--reward_scale", type=float, default=None)
+    parser.add_argument("--reward_shift", type=float, default=None)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=8)
-    parser.add_argument("--eval_interval", type=int, default=5)
-    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument('--num_workers', type=int, default=16)
+    parser.add_argument("--eval_interval", type=int, default=10)
+    parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
 
     # IO
@@ -157,17 +157,17 @@ def built_TRPO_parser():
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='Pendulum-v0')
+    parser.add_argument("--env_id", default='Ant-v2')
     # Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2, Pendulum-v0
     env_id = parser.parse_args().env_id
-    action_range = 2.# 0.4 if env_id == 'Humanoid-v2' else 1.
-    parser.add_argument("--action_range", type=float, default=action_range)
+    action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
+    parser.add_argument("--action_range", type=float, default=None)
 
     # learner
     parser.add_argument("--alg_name", default='TRPO')
     parser.add_argument("--gamma", type=float, default=0.99)
     parser.add_argument("--lam", type=float, default=0.98)
-    parser.add_argument("--gradient_clip_norm", type=float, default=3)
+    parser.add_argument("--gradient_clip_norm", type=float, default=0.5)
     parser.add_argument("--v_iter", type=int, default=5)
     parser.add_argument("--mini_batch_size", type=int, default=64)
     parser.add_argument("--ent_coef", type=float, default=0.)
@@ -198,18 +198,18 @@ def built_TRPO_parser():
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument("--obs_preprocess_type", type=str, default=None)
+    parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
     parser.add_argument("--obs_scale", type=list, default=None)
-    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale", type=float, default=0.2)
-    parser.add_argument("--reward_shift", type=float, default=0.)
+    parser.add_argument("--reward_preprocess_type", type=str, default=None)
+    parser.add_argument("--reward_scale", type=float, default=None)
+    parser.add_argument("--reward_shift", type=float, default=None)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument("--eval_interval", type=int, default=5)
-    parser.add_argument("--save_interval", type=int, default=5)
+    parser.add_argument('--num_workers', type=int, default=16)
+    parser.add_argument("--eval_interval", type=int, default=10)
+    parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
 
     # IO
@@ -223,7 +223,6 @@ def built_TRPO_parser():
     parser.add_argument("--ppc_load_dir", type=str, default=None)
 
     return parser.parse_args()
-
 
 
 def built_parser(alg_name):
@@ -264,4 +263,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('TRPO')
+    main('PPO')

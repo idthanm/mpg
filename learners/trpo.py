@@ -48,9 +48,9 @@ class TRPOWorker(object):
         self.g_grad_timer = TimerStat()
         self.v_grad_timer = TimerStat()
         self.epinfobuf = deque(maxlen=100)
+        self.policy_shapes = [var.get_shape().as_list() for var in self.policy_with_value.policy.trainable_weights]
 
         self.stats = {}
-        print(111)
         logger.info('TRPO Worker initialized')
 
     def get_stats(self):
@@ -164,14 +164,19 @@ class TRPOWorker(object):
 
     @tf.function
     def fisher_vector_product(self, subsampling_obs, vector):  # vector is flatten vars
-        with self.tf.GradientTape() as tape1:
-            with self.tf.GradientTape() as tape2:
+        with self.tf.GradientTape() as outter_tape:
+            with self.tf.GradientTape() as inner_tape:
                 processed_obses = self.preprocessor.tf_process_obses(subsampling_obs)
                 kl = self.policy_with_value.compute_kl(processed_obses, self.old_policy_with_value)
-            kl_grads = tape2.gradient(kl, self.policy_with_value.policy.trainable_weights)
-            flat_kl_grads = flatvars(kl_grads)
-            total = self.tf.reduce_mean(flat_kl_grads*vector)
-        fvp = tape1.gradient(total, self.policy_with_value.policy.trainable_weights)
+            kl_grads = inner_tape.gradient(kl, self.policy_with_value.policy.trainable_weights)
+            start = 0
+            tangents = []
+            for shape in self.policy_shapes:
+                sz = int(np.prod(shape))
+                tangents.append(self.tf.reshape(vector[start:start + sz], shape))
+                start += sz
+            gvp = self.tf.add_n([self.tf.reduce_sum(g * tangent) for (g, tangent) in zip(kl_grads, tangents)])
+        fvp = outter_tape.gradient(gvp, self.policy_with_value.policy.trainable_weights)
         flat_fvp = flatvars(fvp)
         return flat_fvp
 

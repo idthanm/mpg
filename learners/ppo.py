@@ -115,6 +115,7 @@ class PPOLearner(object):
     @tf.function
     def policy_forward_and_backward(self, mb_obs, mb_actions, mb_neglogps, mb_advs):
         with self.tf.GradientTape() as tape:
+            mb_advs = (mb_advs - self.tf.reduce_mean(mb_advs)) / (self.tf.keras.backend.std(mb_advs) + 1e-8)
             processed_obses = self.preprocessor.tf_process_obses(mb_obs)
             policy_entropy = self.policy_with_value.compute_entropy(processed_obses)
             current_neglogp = -self.policy_with_value.compute_logps(processed_obses, mb_actions)
@@ -123,8 +124,11 @@ class PPOLearner(object):
             pg_loss2 = -self.tf.clip_by_value(ratio, 1 - self.args.ppo_loss_clip, 1 + self.args.ppo_loss_clip) * mb_advs
             clipped_loss = self.tf.reduce_mean(self.tf.maximum(pg_loss1, pg_loss2))
             pg_loss = clipped_loss - self.args.ent_coef*policy_entropy
+            clipfrac = self.tf.reduce_mean(self.tf.cast(
+                self.tf.greater(self.tf.abs(ratio - 1.0), self.args.ppo_loss_clip), self.tf.float32))
+
         policy_gradient = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
-        return pg_loss, policy_gradient, clipped_loss, policy_entropy, current_neglogp
+        return pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
@@ -137,16 +141,15 @@ class PPOLearner(object):
 
         with self.v_gradient_timer:
             v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
-            judge_is_nan([v_loss])
-            judge_is_nan(value_gradient)
-            judge_is_nan([value_mean])
+            # judge_is_nan([v_loss])
+            # judge_is_nan(value_gradient)
+            # judge_is_nan([value_mean])
 
         with self.policy_gradient_timer:
-            pg_loss, policy_gradient, clipped_loss, policy_entropy, current_neglogp = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
-            judge_is_nan([pg_loss])
-            judge_is_nan(policy_gradient)
-            judge_is_nan([policy_entropy])
-            judge_is_nan([current_neglogp])
+            pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+            # judge_is_nan([pg_loss])
+            # judge_is_nan(policy_gradient)
+            # judge_is_nan([policy_entropy])
 
         value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
         policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient, self.args.gradient_clip_norm)
@@ -162,6 +165,7 @@ class PPOLearner(object):
             target_mean=np.mean(mb_tdlambda_returns),
             value_gradient_norm=value_gradient_norm.numpy(),
             policy_gradient_norm=policy_gradient_norm.numpy(),
+            clipfrac=clipfrac.numpy()
         ))
         if self.args.reward_preprocess_type == 'normalize':
             self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,

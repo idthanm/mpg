@@ -76,14 +76,16 @@ class Preprocessor(object):
 
     def process_rew(self, rew, done):
         if self.rew_ptype == 'normalize':
-            self.ret = self.ret * self.gamma + rew
-            self.ret_rms.update(np.array([self.ret]))
-            rew = np.clip(rew / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
             if self.num_agent is not None:
+                self.ret = self.ret * self.gamma + rew
+                self.ret_rms.update(self.ret)
+                rew = np.clip(rew / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 self.ret = np.where(done == 1, np.zeros(self.ret), self.ret)
             else:
+                self.ret = self.ret * self.gamma + rew
+                self.ret_rms.update(np.array([self.ret]))
+                rew = np.clip(rew / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 self.ret = 0 if done else self.ret
-
             return rew
         elif self.rew_ptype == 'scale':
             return (rew + self.rew_shift) * self.rew_scale
@@ -92,9 +94,15 @@ class Preprocessor(object):
 
     def process_obs(self, obs):
         if self.obs_ptype == 'normalize':
-            self.ob_rms.update(obs)
-            obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
-            return obs
+            if self.num_agent is not None:
+                self.ob_rms.update(obs)
+                obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob, self.clipob)
+                return obs
+            else:
+                self.ob_rms.update(np.array([obs]))
+                obs = np.clip((obs - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
+                              self.clipob)
+                return obs
         elif self.obs_ptype == 'scale':
             return obs * self.obs_scale
         else:
@@ -120,7 +128,6 @@ class Preprocessor(object):
 
     def tf_process_obses(self, obses):
         with tf.name_scope('obs_process') as scope:
-            # obses = tf.convert_to_tensor(obses)
             if self.obs_ptype == 'normalize':
                 obses = tf.clip_by_value((obses - self.ob_rms.mean) / np.sqrt(self.ob_rms.var + self.epsilon), -self.clipob,
                                           self.clipob)
@@ -133,7 +140,6 @@ class Preprocessor(object):
 
     def tf_process_rewards(self, rewards):
         with tf.name_scope('reward_process') as scope:
-            # rewards = tf.convert_to_tensor(rewards)
             if self.rew_ptype == 'normalize':
                 rewards = tf.clip_by_value(rewards / np.sqrt(self.ret_rms.var + self.epsilon), -self.cliprew, self.cliprew)
                 return rewards
@@ -165,3 +171,17 @@ class Preprocessor(object):
         params = np.load(load_dir + '/ppc_params.npy', allow_pickle=True)
         params = params.item()
         self.set_params(params)
+
+
+def test_preprocessor():
+    import gym
+    pendulum_env = gym.make('Pendulum-v0')
+    ob_space = pendulum_env.observation_space
+    pre = Preprocessor(ob_space, obs_ptype='normalize', rew_ptype='normalize', obs_scale=None,
+                       rew_scale=None, rew_shift=None, clipob=10., cliprew=10., gamma=0.99, epsilon=1e-8)
+    obs = pendulum_env.observation_space.sample()
+    pre.process_obs(obs)
+
+
+if __name__ == '__main__':
+    test_preprocessor()
