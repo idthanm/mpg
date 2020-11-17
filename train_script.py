@@ -68,7 +68,7 @@ def built_PPO_parser():
 
     # env
     parser.add_argument("--env_id", default='Ant-v2')
-    #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2
+    #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
     parser.add_argument("--action_range", type=float, default=action_range)
@@ -90,7 +90,7 @@ def built_PPO_parser():
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
     parser.add_argument("--max_step", type=int, default=1000)
-    parser.add_argument("--eval_render", type=bool, default=True)
+    parser.add_argument("--eval_render", type=bool, default=False)
 
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
@@ -104,7 +104,7 @@ def built_PPO_parser():
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument("--obs_preprocess_type", type=str, default=None)
+    parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
     parser.add_argument("--obs_scale", type=list, default=None)
     parser.add_argument("--reward_preprocess_type", type=str, default='scale')
     parser.add_argument("--reward_scale", type=float, default=0.2)
@@ -187,7 +187,7 @@ def built_TRPO_parser():
     parser.add_argument("--num_eval_episode", type=int, default=5)
     parser.add_argument("--eval_log_interval", type=int, default=1)
     parser.add_argument("--max_step", type=int, default=1000)
-    parser.add_argument("--eval_render", type=bool, default=True)
+    parser.add_argument("--eval_render", type=bool, default=False)
 
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')

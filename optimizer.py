@@ -144,6 +144,7 @@ class TRPOOptimizer(object):
             os.makedirs(self.model_dir)
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
         self.stats = {}
+        self.search_result = 1
         self.sampling_timer = TimerStat()
         self.policy_optimizing_timer = TimerStat()
         self.value_optimizing_timer = TimerStat()
@@ -159,7 +160,8 @@ class TRPOOptimizer(object):
                                policy_optimizing_time=self.policy_optimizing_timer.mean,
                                value_optimizing_time=self.value_optimizing_timer.mean,
                                direction_computing_time=self.direction_computing_timer.mean,
-                               line_search_time=self.line_search_timer.mean
+                               line_search_time=self.line_search_timer.mean,
+                               search_result=self.search_result
                                )
                           )
         return self.stats
@@ -223,6 +225,7 @@ class TRPOOptimizer(object):
                 pglossbefore = mean_stats_before['policy_loss']
                 stepsize = 1.0
                 thbefore = self.local_worker.policy_with_value.policy.get_weights()
+                self.search_result = 1
                 for _ in range(10):
                     thnew_flat = flatvars(thbefore) + fullstep * stepsize
                     thnew = unflatvars(thnew_flat, get_shapes(self.local_worker.policy_with_value.policy.trainable_weights))
@@ -248,6 +251,7 @@ class TRPOOptimizer(object):
                         break
                     stepsize *= .5
                 else:
+                    self.search_result = 0
                     logger.info("couldn't compute a good step")
                     mean_stats = mean_stats_before
                     self.local_worker.policy_with_value.policy.set_weights(thbefore)

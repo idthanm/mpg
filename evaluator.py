@@ -23,8 +23,9 @@ logging.basicConfig(level=logging.INFO)
 
 # logger.setLevel(logging.INFO)
 
-def cal_gamma_return_of_an_episode(reward_list, reward_shift, reward_scale, gamma):
+def cal_gamma_return_of_an_episode(reward_list, gamma, reward_shift=None, reward_scale=None):
     reward_scale = 1. if reward_scale is None else reward_scale
+    reward_shift = 0. if reward_shift is None else reward_shift
     n = len(reward_list)
     gamma_list = np.array([np.power(gamma, i) for i in range(n)])
     reward_list = (np.array(reward_list)+reward_shift)*reward_scale
@@ -73,11 +74,8 @@ class Evaluator(object):
         self.load_ppc_params(ppc_params_load_dir)
 
     def run_an_episode(self, mode, render=True):
-        obs_list = []
-        action_list = []
         reward_list = []
         eval_v_list = []
-        logp_list = []
         info_dict = dict()
         done = 0
         obs = self.env.reset()
@@ -90,8 +88,6 @@ class Evaluator(object):
                 action, _ = self.policy_with_value.compute_action(processed_obs)
             eval_v = self.policy_with_value.compute_vf(processed_obs)
             eval_v_list.append(eval_v[0].numpy())
-            obs_list.append(obs[0])
-            action_list.append(action[0].numpy())
             obs, reward, done, info = self.env.step(action[0].numpy())
             if render: self.env.render()
             reward_list.append(reward)
@@ -101,8 +97,8 @@ class Evaluator(object):
             info_dict = dict(episode_return=episode_return,
                              episode_len=episode_len)
         elif mode == 'Evaluation':
-            true_v_list = list(cal_gamma_return_of_an_episode(reward_list, self.args.reward_shift,
-                                                              self.args.reward_scale, self.args.gamma))
+            true_v_list = list(cal_gamma_return_of_an_episode(reward_list, self.args.gamma, self.args.reward_shift,
+                                                              self.args.reward_scale))
             info_dict = dict(true_v_list=true_v_list,
                              eval_v_list=eval_v_list)
         return info_dict
