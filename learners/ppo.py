@@ -15,7 +15,7 @@ from collections import deque
 from preprocessor import Preprocessor
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 class PPOLearner(object):

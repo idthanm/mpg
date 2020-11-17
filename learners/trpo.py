@@ -17,7 +17,7 @@ from utils.misc import TimerStat, safemean, judge_is_nan, flatvars
 from utils.monitor import Monitor
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 class TRPOWorker(object):
@@ -50,6 +50,7 @@ class TRPOWorker(object):
         self.epinfobuf = deque(maxlen=100)
 
         self.stats = {}
+        print(111)
         logger.info('TRPO Worker initialized')
 
     def get_stats(self):

@@ -12,10 +12,9 @@ import logging
 import ray
 
 from evaluator import Evaluator
-from worker import OnPolicyWorker
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 class Trainer(object):

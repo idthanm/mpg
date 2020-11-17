@@ -24,10 +24,7 @@ from tester import Tester
 from trainer import Trainer
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
-
-# logging.getLogger().setLevel(logging.INFO)
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
@@ -160,10 +157,10 @@ def built_TRPO_parser():
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='Ant-v2')
-    # Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2
+    parser.add_argument("--env_id", default='Pendulum-v0')
+    # Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2, Pendulum-v0
     env_id = parser.parse_args().env_id
-    action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
+    action_range = 2.# 0.4 if env_id == 'Humanoid-v2' else 1.
     parser.add_argument("--action_range", type=float, default=action_range)
 
     # learner
@@ -210,7 +207,7 @@ def built_TRPO_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument("--eval_interval", type=int, default=5)
     parser.add_argument("--save_interval", type=int, default=5)
     parser.add_argument("--log_interval", type=int, default=1)
@@ -267,4 +264,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('PPO')
+    main('TRPO')
