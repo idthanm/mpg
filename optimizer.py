@@ -38,21 +38,14 @@ class AllReduceOptimizer(object):
             os.makedirs(self.model_dir)
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
         self.stats = {}
-        self.sampling_timer = TimerStat()
-        self.optimizing_timer = TimerStat()
-        self.grad_timer = TimerStat()
-        self.grad_apply_timer = TimerStat()
-
+        self.step_timer = TimerStat()
         logger.info('Optimizer initialized')
 
     def get_stats(self):
         self.stats.update(dict(iteration=self.iteration,
                                num_sampled_steps=self.num_sampled_steps,
                                num_updates=self.num_updates,
-                               sampling_time=self.sampling_timer.mean,
-                               optimizing_time=self.optimizing_timer.mean,
-                               grad_apply_time=self.grad_apply_timer.mean,
-                               grad_time=self.grad_timer.mean
+                               step_timer=self.step_timer.mean,
                                )
                           )
         return self.stats
@@ -60,23 +53,19 @@ class AllReduceOptimizer(object):
     def step(self):
         logger.info('begin the {}-th optimizing step'.format(self.iteration))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
-        with self.sampling_timer:
-            batch_data_with_info = ray.get([worker.sample.remote() for worker in self.workers['remote_workers']])
-            for i, worker in enumerate(self.workers['remote_workers']):
-                worker.put_data_into_learner.remote(*batch_data_with_info[i])
-        with self.optimizing_timer:
+        with self.step_timer:
+            for worker in self.workers['remote_workers']:
+                worker.sample_and_process.remote()
             all_stats = [[] for _ in range(self.args.num_workers)]
             for i in range(self.args.epoch):
                 for worker in self.workers['remote_workers']:
                     worker.shuffle.remote()
                 for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
-                    with self.grad_timer:
-                        mb_grads = ray.get([worker.compute_gradient_over_ith_minibatch.remote(mb_index)
-                                            for worker in self.workers['remote_workers']])
+                    mb_grads = ray.get([worker.compute_gradient_over_ith_minibatch.remote(mb_index)
+                                        for worker in self.workers['remote_workers']])
                     worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
                     final_grads = np.array(mb_grads).mean(axis=0)
-                    with self.grad_apply_timer:
-                        self.local_worker.apply_gradients(self.iteration, final_grads)
+                    self.local_worker.apply_gradients(self.iteration, final_grads)
                     self.sync_remote_workers()
                     for worker_index in range(self.args.num_workers):
                         all_stats[worker_index].append(worker_stats[worker_index])

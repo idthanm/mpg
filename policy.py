@@ -19,6 +19,7 @@ class PolicyWithValue(object):
     import tensorflow_probability as tfp
     tfd = tfp.distributions
     tfb = tfp.bijectors
+    tf.config.experimental.set_visible_devices([], 'GPU')
 
     def __init__(self, obs_space, act_space, args):
         self.args = args
@@ -81,6 +82,7 @@ class PolicyWithValue(object):
                 ))
         return act_dist
 
+    @tf.function
     def compute_action(self, obs):
         with self.tf.name_scope('compute_action') as scope:
             logits = self.policy(obs)
@@ -89,6 +91,7 @@ class PolicyWithValue(object):
             logps = act_dist.log_prob(actions)
             return actions, logps
 
+    @tf.function
     def compute_logps(self, obs, actions):
         with self.tf.name_scope('compute_logps') as scope:
             logits = self.policy(obs)
@@ -101,6 +104,7 @@ class PolicyWithValue(object):
                     ))
             return act_dist.log_prob(actions)
 
+    @tf.function
     def compute_entropy(self, obs):
         with self.tf.name_scope('compute_entropy') as scope:
             logits = self.policy(obs)
@@ -114,11 +118,12 @@ class PolicyWithValue(object):
             finally:
                 return entropy
 
-    def compute_kl(self, obs, other):  # KL(other||ego)
+    @tf.function
+    def compute_kl(self, obs, other_out):  # KL(other||ego)
         with self.tf.name_scope('compute_entropy') as scope:
             logits = self.policy(obs)
             act_dist = self._logits2dist(logits)
-            other_act_dist = self._logits2dist(self.tf.stop_gradient(other.policy(obs)))
+            other_act_dist = self._logits2dist(self.tf.stop_gradient(other_out))
             try:
                 kl = self.tf.reduce_mean(other_act_dist.kl_divergence(act_dist))
             except NotImplementedError:
@@ -129,11 +134,13 @@ class PolicyWithValue(object):
             finally:
                 return kl
 
+    @tf.function
     def compute_mode(self, obs):
         logits = self.policy(obs)
         mean, _ = self.tf.split(logits, num_or_size_splits=2, axis=-1)
         return self.args.action_range * self.tf.tanh(mean) if self.args.action_range is not None else mean
 
+    @tf.function
     def compute_vf(self, obs):
         with self.tf.name_scope('compute_value') as scope:
             return self.value(obs)

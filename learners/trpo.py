@@ -167,7 +167,8 @@ class TRPOWorker(object):
         with self.tf.GradientTape() as outter_tape:
             with self.tf.GradientTape() as inner_tape:
                 processed_obses = self.preprocessor.tf_process_obses(subsampling_obs)
-                kl = self.policy_with_value.compute_kl(processed_obses, self.old_policy_with_value)
+                kl = self.policy_with_value.compute_kl(processed_obses,
+                                                       self.old_policy_with_value.policy(processed_obses))
             kl_grads = inner_tape.gradient(kl, self.policy_with_value.policy.trainable_weights)
             start = 0
             tangents = []
@@ -190,7 +191,8 @@ class TRPOWorker(object):
     def compute_g(self, batch_obs, batch_actions, batch_neglogps, batch_advs):
         with self.tf.GradientTape() as tape:
             processed_obses = self.preprocessor.tf_process_obses(batch_obs)
-            kl = self.policy_with_value.compute_kl(processed_obses, self.old_policy_with_value)
+            kl = self.policy_with_value.compute_kl(processed_obses,
+                                                   self.old_policy_with_value.policy(processed_obses))
             policy_entropy = self.policy_with_value.compute_entropy(processed_obses)
             current_neglogp = -self.policy_with_value.compute_logps(processed_obses, batch_actions)
             ratio = self.tf.exp(batch_neglogps - current_neglogp)

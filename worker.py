@@ -14,7 +14,7 @@ import gym
 import numpy as np
 from utils.monitor import Monitor
 from preprocessor import Preprocessor
-from utils.misc import judge_is_nan
+from utils.misc import judge_is_nan, TimerStat
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -50,6 +50,8 @@ class OnPolicyWorker(object):
             os.makedirs(self.log_dir)
 
         self.stats = {}
+        self.sampling_time = TimerStat()
+
         logger.info('Worker initialized')
 
     def get_stats(self):
@@ -85,16 +87,16 @@ class OnPolicyWorker(object):
     def load_ppc_params(self, load_dir):
         self.preprocessor.load_params(load_dir)
 
-    def sample(self):
+    def sample_and_process(self):
         batch_data = []
         epinfos = []
         for _ in range(self.sample_batch_size):
-            judge_is_nan(self.obs)
+            # judge_is_nan(self.obs)
             processed_obs = self.preprocessor.process_obs(self.obs)
             action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
             # print(action, logp)
-            judge_is_nan(action)
-            judge_is_nan(logp)
+            # judge_is_nan(action)
+            # judge_is_nan(logp)
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
 
@@ -103,9 +105,6 @@ class OnPolicyWorker(object):
             maybeepinfo = info.get('episode')
             if maybeepinfo:
                 epinfos.append(maybeepinfo)
-        return batch_data, epinfos
-
-    def put_data_into_learner(self, batch_data, epinfos):
         self.learner.set_ppc_params(self.get_ppc_params())
         self.learner.get_batch_data(batch_data, epinfos)
 
