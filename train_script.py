@@ -157,11 +157,11 @@ def built_TRPO_parser():
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='Pendulum-v0')
+    parser.add_argument("--env_id", default='Ant-v2')
     # Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2, Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
-    parser.add_argument("--action_range", type=float, default=2.)
+    parser.add_argument("--action_range", type=float, default=None)
 
     # learner
     parser.add_argument("--alg_name", default='TRPO')
@@ -207,7 +207,7 @@ def built_TRPO_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=8)
+    parser.add_argument('--num_workers', type=int, default=16)
     parser.add_argument("--eval_interval", type=int, default=10)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
