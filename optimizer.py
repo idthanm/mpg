@@ -134,10 +134,10 @@ class TRPOOptimizer(object):
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
         self.stats = {}
         self.search_result = 1
-        self.sampling_timer = TimerStat()
-        self.policy_optimizing_timer = TimerStat()
+        self.step_timer = TimerStat()
         self.value_optimizing_timer = TimerStat()
         self.direction_computing_timer = TimerStat()
+        self.sample_and_po_timer = TimerStat()
         self.line_search_timer = TimerStat()
 
         logger.info('Optimizer initialized')
@@ -145,8 +145,8 @@ class TRPOOptimizer(object):
     def get_stats(self):
         self.stats.update(dict(iteration=self.iteration,
                                num_sampled_steps=self.num_sampled_steps,
-                               sampling_time=self.sampling_timer.mean,
-                               policy_optimizing_time=self.policy_optimizing_timer.mean,
+                               step_time=self.step_timer.mean,
+                               sample_and_po_time=self.sample_and_po_timer.mean,
                                value_optimizing_time=self.value_optimizing_timer.mean,
                                direction_computing_time=self.direction_computing_timer.mean,
                                line_search_time=self.line_search_timer.mean,
@@ -158,18 +158,17 @@ class TRPOOptimizer(object):
     def step(self):
         logger.info('begin the {}-th optimizing step'.format(self.iteration))
         logger.info('sampling {} in total'.format(self.num_sampled_steps))
-        with self.sampling_timer:
-            batch_data_with_info = ray.get([worker.sample.remote() for worker in self.workers['remote_workers']])
-            for i, worker in enumerate(self.workers['remote_workers']):
-                worker.get_batch_data.remote(*batch_data_with_info[i])
-        with self.policy_optimizing_timer:
-            flat_gs = ray.get([worker.prepare_for_policy_update.remote() for worker in self.workers['remote_workers']])
-            worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
-            mean_stats_before = {}
-            for key in worker_stats[0].keys():
-                value_list = list(map(lambda x: x[key], worker_stats))
-                mean_stats_before.update({key: sum(value_list) / len(value_list)})
-            mean_flat_g = np.array(flat_gs).mean(axis=0)
+        with self.step_timer:
+            with self.sample_and_po_timer:
+                for worker in self.workers['remote_workers']:
+                    worker.sample_and_process.remote()
+                flat_gs = ray.get([worker.prepare_for_policy_update.remote() for worker in self.workers['remote_workers']])
+                worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
+                mean_stats_before = {}
+                for key in worker_stats[0].keys():
+                    value_list = list(map(lambda x: x[key], worker_stats))
+                    mean_stats_before.update({key: sum(value_list) / len(value_list)})
+                mean_flat_g = np.array(flat_gs).mean(axis=0)
 
             def compute_fvp(vec):
                 return np.array(ray.get([worker.compute_fvp.remote(vec)

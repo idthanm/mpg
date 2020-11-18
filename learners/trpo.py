@@ -47,6 +47,7 @@ class TRPOWorker(object):
         self.batch_data = None
         self.g_grad_timer = TimerStat()
         self.v_grad_timer = TimerStat()
+        self.sampling_timer = TimerStat()
         self.epinfobuf = deque(maxlen=100)
         self.policy_shapes = [var.get_shape().as_list() for var in self.policy_with_value.policy.trainable_weights]
 
@@ -128,25 +129,27 @@ class TRPOWorker(object):
         self.policy_with_value.policy_optimizer.apply_gradients(zip(policy_grads,
                                                                     self.policy_with_value.policy.trainable_weights))
 
-    def sample(self):
-        batch_data = []
-        epinfos = []
-        for _ in range(self.sample_batch_size):
-            judge_is_nan(self.obs)
-            processed_obs = self.preprocessor.process_obs(self.obs)
-            action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
-            # print(action, logp)
-            judge_is_nan(action)
-            judge_is_nan(logp)
-            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
-            processed_rew = self.preprocessor.process_rew(reward, self.done)
+    def sample_and_process(self):
+        with self.sampling_timer:
+            batch_data = []
+            epinfos = []
+            for _ in range(self.sample_batch_size):
+                judge_is_nan(self.obs)
+                processed_obs = self.preprocessor.process_obs(self.obs)
+                action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
+                # print(action, logp)
+                judge_is_nan(action)
+                judge_is_nan(logp)
+                obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+                processed_rew = self.preprocessor.process_rew(reward, self.done)
 
-            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, logp[0].numpy()))
-            self.obs = self.env.reset() if self.done else obs_tp1.copy()
-            maybeepinfo = info.get('episode')
-            if maybeepinfo:
-                epinfos.append(maybeepinfo)
-        return batch_data, epinfos
+                batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, logp[0].numpy()))
+                self.obs = self.env.reset() if self.done else obs_tp1.copy()
+                maybeepinfo = info.get('episode')
+                if maybeepinfo:
+                    epinfos.append(maybeepinfo)
+        self.get_batch_data(batch_data, epinfos)
+        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
 
     def compute_advantage(self):  # require data is in order
         n_steps = len(self.batch_data['batch_rewards'])

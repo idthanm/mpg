@@ -31,6 +31,7 @@ class PPOLearner(object):
         self.batch_data = None
         self.policy_gradient_timer = TimerStat()
         self.v_gradient_timer = TimerStat()
+        self.mb_learning_timer = TimerStat()
         self.stats = {}
         self.epinfobuf = deque(maxlen=100)
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
@@ -131,32 +132,34 @@ class PPOLearner(object):
         return pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
-        start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
-        mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
-        mb_advs = self.batch_data['batch_advs'][start_idx: end_idx]
-        mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
-        mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
-        mb_neglogps = -self.batch_data['batch_logps'][start_idx: end_idx]
-        mb_oldvs = self.batch_data['batch_values'][start_idx: end_idx]
+        with self.mb_learning_timer:
+            start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
+            mb_obs = self.batch_data['batch_obs'][start_idx: end_idx]
+            mb_advs = self.batch_data['batch_advs'][start_idx: end_idx]
+            mb_tdlambda_returns = self.batch_data['batch_tdlambda_returns'][start_idx: end_idx]
+            mb_actions = self.batch_data['batch_actions'][start_idx: end_idx]
+            mb_neglogps = -self.batch_data['batch_logps'][start_idx: end_idx]
+            mb_oldvs = self.batch_data['batch_values'][start_idx: end_idx]
 
-        with self.v_gradient_timer:
-            v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
-            # judge_is_nan([v_loss])
-            # judge_is_nan(value_gradient)
-            # judge_is_nan([value_mean])
+            with self.v_gradient_timer:
+                v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
+                # judge_is_nan([v_loss])
+                # judge_is_nan(value_gradient)
+                # judge_is_nan([value_mean])
 
-        with self.policy_gradient_timer:
-            pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
-            # judge_is_nan([pg_loss])
-            # judge_is_nan(policy_gradient)
-            # judge_is_nan([policy_entropy])
+            with self.policy_gradient_timer:
+                pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac = self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+                # judge_is_nan([pg_loss])
+                # judge_is_nan(policy_gradient)
+                # judge_is_nan([policy_entropy])
 
-        value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
-        policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient, self.args.gradient_clip_norm)
+            value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
+            policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             v_timer=self.v_gradient_timer.mean,
             pg_time=self.policy_gradient_timer.mean,
+            mb_learning_time=self.mb_learning_timer.mean,
             v_loss=v_loss.numpy(),
             policy_loss=pg_loss.numpy(),
             clipped_loss=clipped_loss.numpy(),
