@@ -78,7 +78,7 @@ def built_PPO_parser():
     parser.add_argument("--epoch", type=int, default=10)
     parser.add_argument("--ppo_loss_clip", type=float, default=0.2)
     parser.add_argument("--mini_batch_size", type=int, default=64)
-    parser.add_argument("--ent_coef", type=float, default=0.)
+    parser.add_argument("--ent_coef", type=float, default=0.01)
 
     # worker
     parser.add_argument('--sample_batch_size', type=int, default=2048)
@@ -92,8 +92,8 @@ def built_PPO_parser():
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
     parser.add_argument("--policy_model_cls", type=str, default='PPO')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 320000, 0])
-    parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 320000, 0])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-3, 500000, 3e-5])
+    parser.add_argument("--value_lr_schedule", type=list, default=[3e-3, 500000, 3e-5])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=64)
     parser.add_argument("--policy_out_activation", type=str, default='linear')

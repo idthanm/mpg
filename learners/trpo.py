@@ -111,10 +111,6 @@ class TRPOWorker(object):
         self.policy_with_value.value_optimizer.apply_gradients(zip(v_grads,
                                                                    self.policy_with_value.value.trainable_weights))
 
-    def apply_policy_gradients(self, iteration, policy_grads):
-        self.policy_with_value.policy_optimizer.apply_gradients(zip(policy_grads,
-                                                                    self.policy_with_value.policy.trainable_weights))
-
     def sample_and_process(self):
         with self.sampling_timer:
             batch_data = []
@@ -182,13 +178,13 @@ class TRPOWorker(object):
         return self.fisher_vector_product(subsampling_obs, vector)
 
     @tf.function
-    def compute_g(self, processed_batch_obses, batch_actions, batch_neglogps, batch_advs):
+    def compute_g(self, batch_obses, batch_actions, batch_logps, batch_advs):
         with self.tf.GradientTape() as tape:
-            kl = self.policy_with_value.compute_kl(processed_batch_obses,
-                                                   self.old_policy_with_value.policy(processed_batch_obses))
-            policy_entropy = self.policy_with_value.compute_entropy(processed_batch_obses)
-            current_neglogp = -self.policy_with_value.compute_logps(processed_batch_obses, batch_actions)
-            ratio = self.tf.exp(batch_neglogps - current_neglogp)
+            kl = self.policy_with_value.compute_kl(batch_obses,
+                                                   self.old_policy_with_value.policy(batch_obses))
+            policy_entropy = self.policy_with_value.compute_entropy(batch_obses)
+            current_logp = self.policy_with_value.compute_logps(batch_obses, batch_actions)
+            ratio = self.tf.exp(current_logp - batch_logps)
             surr_loss = -self.tf.reduce_mean(ratio * batch_advs)
             ent_bonus = self.args.ent_coef * policy_entropy
             pg_loss = surr_loss - ent_bonus
@@ -201,14 +197,14 @@ class TRPOWorker(object):
         batch_advs = self.tf.constant(self.batch_data['batch_advs'])
         batch_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'])
         batch_actions = self.tf.constant(self.batch_data['batch_actions'])
-        batch_neglogps = self.tf.constant(-self.batch_data['batch_logps'])
+        batch_logps = self.tf.constant(self.batch_data['batch_logps'])
 
         with self.v_grad_timer:
             v_loss, value_gradient, value_mean = self.value_forward_and_backward(batch_obs, batch_tdlambda_returns)
             value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
         with self.g_grad_timer:
             pg_loss, flat_g, surr_loss, ent_bonus, policy_entropy, kl =\
-                self.compute_g(batch_obs, batch_actions, batch_neglogps, batch_advs)
+                self.compute_g(batch_obs, batch_actions, batch_logps, batch_advs)
 
         self.stats.update(dict(
             v_timer=self.v_grad_timer.mean,

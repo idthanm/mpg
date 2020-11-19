@@ -133,16 +133,11 @@ class PPOLearner(tf.Module):
 
             with self.v_gradient_timer:
                 v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
-                # judge_is_nan([v_loss])
-                # judge_is_nan(value_gradient)
-                # judge_is_nan([value_mean])
 
             with self.policy_gradient_timer:
                 pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac = \
                     self.policy_forward_and_backward(mb_obs, mb_actions, mb_logps, mb_advs)
-                # judge_is_nan([pg_loss])
-                # judge_is_nan(policy_gradient)
-                # judge_is_nan([policy_entropy])
+
             value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient,
                                                                               self.args.gradient_clip_norm)
             policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
