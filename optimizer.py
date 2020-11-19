@@ -58,8 +58,6 @@ class AllReduceOptimizer(object):
                 worker.sample_and_process.remote()
             all_stats = [[] for _ in range(self.args.num_workers)]
             for i in range(self.args.epoch):
-                for worker in self.workers['remote_workers']:
-                    worker.shuffle.remote()
                 for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                     mb_grads = ray.get([worker.compute_gradient_over_ith_minibatch.remote(mb_index)
                                         for worker in self.workers['remote_workers']])
@@ -247,8 +245,6 @@ class TRPOOptimizer(object):
 
             with self.value_optimizing_timer:
                 for i in range(self.args.v_iter):
-                    for worker in self.workers['remote_workers']:
-                        worker.shuffle.remote()
                     for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                         v_mb_grads = ray.get([worker.value_gradient_for_ith_mb.remote(mb_index)
                                               for worker in self.workers['remote_workers']])

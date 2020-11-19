@@ -51,7 +51,7 @@ class OnPolicyWorker(object):
 
         self.stats = {}
         self.sampling_timer = TimerStat()
-
+        self.processing_timer = TimerStat()
         logger.info('Worker initialized')
 
     def get_stats(self):
@@ -73,6 +73,7 @@ class OnPolicyWorker(object):
         return self.policy_with_value.set_weights(weights)
 
     def apply_gradients(self, iteration, grads):
+        iteration = self.tf.convert_to_tensor(iteration)
         self.policy_with_value.apply_gradients(iteration, grads)
 
     def get_ppc_params(self):
@@ -88,27 +89,30 @@ class OnPolicyWorker(object):
         self.preprocessor.load_params(load_dir)
 
     def sample_and_process(self):
-        with self.sampling_time:
+        with self.sampling_timer:
             batch_data = []
             epinfos = []
             for _ in range(self.sample_batch_size):
                 # judge_is_nan(self.obs)
                 processed_obs = self.preprocessor.process_obs(self.obs)
-                action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
-                # print(action, logp)
+                processed_obs_tensor = self.tf.convert_to_tensor(processed_obs[np.newaxis, :])
+                action, logp = self.policy_with_value.compute_action(processed_obs_tensor)
                 # judge_is_nan(action)
                 # judge_is_nan(logp)
-                obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+                action, logp = action.numpy()[0], logp.numpy()[0]
+                obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
 
-                batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done, logp[0].numpy()))
+                batch_data.append((self.obs.copy(), action, reward, obs_tp1, self.done, logp))
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
+        with self.processing_timer:
             self.learner.set_ppc_params(self.get_ppc_params())
             self.learner.get_batch_data(batch_data, epinfos)
-        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
+        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
+                               worker_processing_time=self.processing_timer.mean))
 
     def compute_gradient_over_ith_minibatch(self, i):
         self.learner.set_weights(self.get_weights())
@@ -116,3 +120,20 @@ class OnPolicyWorker(object):
         learner_stats = self.learner.get_stats()
         self.stats.update(learner_stats)
         return grad
+
+
+def debug_worker():
+    from train_script import built_PPO_parser
+    from policy import PolicyWithValue
+    from learners.ppo import PPOLearner
+    env_id = 'Pendulum-v0'
+    worker_id = 0
+    args = built_PPO_parser()
+    worker = OnPolicyWorker(PolicyWithValue, PPOLearner, env_id, args, worker_id)
+    for _ in range(10):
+        worker.sample_and_process()
+
+
+if __name__ == '__main__':
+    debug_worker()
+

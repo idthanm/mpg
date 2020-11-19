@@ -10,11 +10,12 @@
 from gym import spaces
 
 from model import MLPNet, MLPNetDSAC
+import tensorflow as tf
 
 NAME2MODELCLS = dict([('MLP', MLPNet), ('DSAC', MLPNetDSAC)])
 
 
-class PolicyWithValue(object):
+class PolicyWithValue(tf.Module):
     import tensorflow as tf
     import tensorflow_probability as tfp
     tfd = tfp.distributions
@@ -22,6 +23,7 @@ class PolicyWithValue(object):
     tf.config.experimental.set_visible_devices([], 'GPU')
 
     def __init__(self, obs_space, act_space, args):
+        super().__init__()
         self.args = args
         assert isinstance(obs_space, spaces.Box)
         assert isinstance(act_space, spaces.Box)
@@ -55,14 +57,15 @@ class PolicyWithValue(object):
     def get_weights(self):
         return [model.get_weights() for model in self.models]
 
-    @property
-    def trainable_weights(self):
-        return self.tf.nest.flatten([model.trainable_weights for model in self.models])
+    # @property
+    # def trainable_weights(self):
+    #     return self.tf.nest.flatten([model.trainable_weights for model in self.models])
 
     def set_weights(self, weights):
         for i, weight in enumerate(weights):
             self.models[i].set_weights(weight)
 
+    @tf.function
     def apply_gradients(self, iteration, grads):
         value_weights_len = len(self.value.trainable_weights)
         value_grad, policy_grad = grads[:value_weights_len], grads[value_weights_len:]

@@ -87,8 +87,8 @@ class Evaluator(object):
             else:
                 action, _ = self.policy_with_value.compute_action(processed_obs)
             eval_v = self.policy_with_value.compute_vf(processed_obs)
-            eval_v_list.append(eval_v[0].numpy())
-            obs, reward, done, info = self.env.step(action[0].numpy())
+            eval_v_list.append(eval_v.numpy()[0])
+            obs, reward, done, info = self.env.step(action.numpy()[0])
             if render: self.env.render()
             reward_list.append(reward)
         if mode == 'Performance':
