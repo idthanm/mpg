@@ -62,7 +62,7 @@ class AllReduceOptimizer(object):
                     mb_grads = ray.get([worker.compute_gradient_over_ith_minibatch.remote(mb_index)
                                         for worker in self.workers['remote_workers']])
                     worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
-                    final_grads = np.array(mb_grads).mean(axis=0)
+                    final_grads = np.array(mb_grads).mean(axis=0).tolist()
                     self.local_worker.apply_gradients(self.iteration, final_grads)
                     self.sync_remote_workers()
                     for worker_index in range(self.args.num_workers):
