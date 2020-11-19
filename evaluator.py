@@ -121,7 +121,6 @@ class Evaluator(object):
             n_episode_len_list = [epinfo['episode_len'] for epinfo in epinfo_list]
             average_return_with_diff_base = np.array([self.average_max_n(n_episode_return_list, x) for x in [1, 3, 5]])
             average_len = self.average_max_n(n_episode_len_list)
-            average_reward = sum(n_episode_return_list) / sum(n_episode_len_list)
             return dict(average_len=average_len,
                         average_return_with_max1=average_return_with_diff_base[0],
                         average_return_with_max3=average_return_with_diff_base[1],

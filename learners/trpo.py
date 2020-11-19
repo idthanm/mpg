@@ -131,34 +131,37 @@ class TRPOWorker(object):
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
 
-                batch_data.append((self.obs.copy(), action, reward, obs_tp1, self.done, logp))
+                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
         self.get_batch_data(batch_data, epinfos)
         self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
+        if self.args.reward_preprocess_type == 'normalize':
+            self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
+                                   ret_rms_mean=self.preprocessor.ret_rms.mean))
 
     def compute_advantage(self):  # require data is in order
         n_steps = len(self.batch_data['batch_rewards'])
-        processed_obses = self.preprocessor.np_process_obses(self.batch_data['batch_obs'])
-        processed_rewards = self.preprocessor.np_process_rewards(self.batch_data['batch_rewards'])
-        batch_values = self.policy_with_value.value(processed_obses).numpy()[:, 0]  # len = n_steps + 1
+        batch_obs = self.batch_data['batch_obs']
+        batch_rewards = self.batch_data['batch_rewards']
+        batch_values = self.policy_with_value.value(batch_obs).numpy()[:, 0]  # len = n_steps + 1
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):
             nextnonterminal = 1 - self.batch_data['batch_dones'][t + 1]
-            delta = processed_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
+            delta = batch_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
             batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
         batch_tdlambda_returns = batch_advs + batch_values
         return batch_advs, batch_tdlambda_returns, batch_values
 
     @tf.function
-    def fisher_vector_product(self, processed_subsampling_obs, vector):  # vector is flatten vars
+    def fisher_vector_product(self, subsampling_obs, vector):  # vector is flatten vars
         with self.tf.GradientTape() as outter_tape:
             with self.tf.GradientTape() as inner_tape:
-                kl = self.policy_with_value.compute_kl(processed_subsampling_obs,
-                                                       self.old_policy_with_value.policy(processed_subsampling_obs))
+                kl = self.policy_with_value.compute_kl(subsampling_obs,
+                                                       self.old_policy_with_value.policy(subsampling_obs))
             kl_grads = inner_tape.gradient(kl, self.policy_with_value.policy.trainable_weights)
             start = 0
             tangents = []
@@ -175,9 +178,8 @@ class TRPOWorker(object):
         batch_obs = self.batch_data['batch_obs']
         subsampling_index = np.arange(0, len(batch_obs), self.args.subsampling)
         subsampling_obs = self.tf.constant(batch_obs[subsampling_index])
-        processed_subsampling_obs = self.preprocessor.tf_process_obses(subsampling_obs)
         vector = self.tf.constant(vector)
-        return self.fisher_vector_product(processed_subsampling_obs, vector)
+        return self.fisher_vector_product(subsampling_obs, vector)
 
     @tf.function
     def compute_g(self, processed_batch_obses, batch_actions, batch_neglogps, batch_advs):
@@ -200,14 +202,13 @@ class TRPOWorker(object):
         batch_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'])
         batch_actions = self.tf.constant(self.batch_data['batch_actions'])
         batch_neglogps = self.tf.constant(-self.batch_data['batch_logps'])
-        processed_batch_obses = self.preprocessor.tf_process_obses(batch_obs)
 
         with self.v_grad_timer:
-            v_loss, value_gradient, value_mean = self.value_forward_and_backward(processed_batch_obses, batch_tdlambda_returns)
+            v_loss, value_gradient, value_mean = self.value_forward_and_backward(batch_obs, batch_tdlambda_returns)
             value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
         with self.g_grad_timer:
             pg_loss, flat_g, surr_loss, ent_bonus, policy_entropy, kl =\
-                self.compute_g(processed_batch_obses, batch_actions, batch_neglogps, batch_advs)
+                self.compute_g(batch_obs, batch_actions, batch_neglogps, batch_advs)
 
         self.stats.update(dict(
             v_timer=self.v_grad_timer.mean,
@@ -222,9 +223,7 @@ class TRPOWorker(object):
             target_mean=np.mean(batch_tdlambda_returns),
             value_gradient_norm=value_gradient_norm.numpy(),
         ))
-        if self.args.reward_preprocess_type == 'normalize':
-            self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
-                                   ret_rms_mean=self.preprocessor.ret_rms.mean))
+
         return flat_g.numpy()
 
     @tf.function
@@ -244,8 +243,7 @@ class TRPOWorker(object):
         mbinds = self.permutation[start_idx:end_idx]
         mb_obs = self.tf.constant(self.batch_data['batch_obs'][mbinds])
         mb_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'][mbinds])
-        processed_mb_obs = self.preprocessor.tf_process_obses(mb_obs)
-        v_loss, value_gradient, value_mean = self.value_forward_and_backward(processed_mb_obs, mb_tdlambda_returns)
+        v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns)
         value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
 
         return list(map(lambda x: x.numpy(), value_gradient))

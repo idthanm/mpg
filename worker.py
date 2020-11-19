@@ -103,16 +103,18 @@ class OnPolicyWorker(object):
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
 
-                batch_data.append((self.obs.copy(), action, reward, obs_tp1, self.done, logp))
+                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
         with self.processing_timer:
-            self.learner.set_ppc_params(self.get_ppc_params())
             self.learner.get_batch_data(batch_data, epinfos)
         self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
                                worker_processing_time=self.processing_timer.mean))
+        if self.args.reward_preprocess_type == 'normalize':
+            self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
+                                   ret_rms_mean=self.preprocessor.ret_rms.mean))
 
     def compute_gradient_over_ith_minibatch(self, i):
         self.learner.set_weights(self.get_weights())
