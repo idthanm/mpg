@@ -91,7 +91,7 @@ def built_PPO_parser():
 
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
-    parser.add_argument("--policy_model_cls", type=str, default='MLP')
+    parser.add_argument("--policy_model_cls", type=str, default='PPO')
     parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 1000, 0])
     parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 1000, 0])
     parser.add_argument('--num_hidden_layers', type=int, default=2)

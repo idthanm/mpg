@@ -44,6 +44,38 @@ class MLPNet(Model):
         return x
 
 
+class PPONet(Model):
+    def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
+        super(PPONet, self).__init__(name=kwargs['name'])
+        self.first_ = Dense(num_hidden_units,
+                            input_shape=(None, input_dim),
+                            activation='tanh',
+                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                            # bias_initializer=tf.keras.initializers.Constant(0.),
+                            dtype=tf.float32)
+        self.sec_ = Dense(num_hidden_units,
+                            activation='tanh',
+                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                            # bias_initializer=tf.keras.initializers.Constant(0.),
+                            dtype=tf.float32)
+        output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
+        self.mean = Dense(int(output_dim/2),
+                          activation=output_activation,
+                          kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                          bias_initializer=tf.keras.initializers.Constant(0.),
+                          dtype=tf.float32)
+        self.logstd = tf.Variable(initial_value=tf.zeros((1, int(output_dim/2))), name='pi/logstd', dtype=tf.float32)
+        self.build(input_shape=(None, input_dim))
+
+    def call(self, x, **kwargs):
+        x = self.first_(x)
+        x = self.sec_(x)
+        mean = self.mean(x)
+        logstd = tf.tile(self.logstd, (tf.shape(mean)[0], 1))
+        out = tf.concat([mean, logstd], axis=1)
+        return out
+
+
 class MLPNetDSAC(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, output_dim, **kwargs):
         super(MLPNetDSAC, self).__init__(name=kwargs['name'])
@@ -126,6 +158,14 @@ def test_dsac_net():
     out = net(inpu)
     print(out)
 
+def test_ppo_net():
+    import numpy as np
+    net = PPONet(3,2,64,2,name='policy')
+    inpu = np.random.random((10, 3))
+    out = net(inpu)
+    print(net.trainable_weights)
+    print(out)
+
 
 if __name__ == '__main__':
-    test_dsac_net()
+    test_ppo_net()
