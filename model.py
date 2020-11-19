@@ -21,13 +21,13 @@ class MLPNet(Model):
         self.first_ = Dense(num_hidden_units,
                             input_shape=(None, input_dim),
                             activation='tanh',
-                            kernel_initializer=tf.keras.initializers.Orthogonal(1.),
-                            bias_initializer=tf.keras.initializers.Constant(0.),
+                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                            # bias_initializer=tf.keras.initializers.Constant(0.),
                             dtype=tf.float32)
         self.hidden = Sequential([Dense(num_hidden_units,
                                         activation='tanh',
-                                        kernel_initializer=tf.keras.initializers.Orthogonal(1.),
-                                        bias_initializer=tf.keras.initializers.Constant(0.),
+                                        kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                                        # bias_initializer=tf.keras.initializers.Constant(0.),
                                         dtype=tf.float32) for _ in range(num_hidden_layers-1)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.outputs = Dense(output_dim,

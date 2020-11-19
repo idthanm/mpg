@@ -101,15 +101,15 @@ class PPOLearner(tf.Module):
         return v_loss, value_gradient, value_mean
 
     @tf.function
-    def policy_forward_and_backward(self, mb_obses, mb_actions, mb_neglogps, mb_advs):
+    def policy_forward_and_backward(self, mb_obses, mb_actions, mb_logps, mb_advs):
         mb_advs = (mb_advs - self.tf.reduce_mean(mb_advs)) / (self.tf.keras.backend.std(mb_advs) + 1e-8)
         with self.tf.GradientTape() as tape:
             policy_entropy = self.policy_with_value.compute_entropy(mb_obses)
-            current_neglogp = -self.policy_with_value.compute_logps(mb_obses, mb_actions)
-            ratio = self.tf.exp(mb_neglogps - current_neglogp)
-            pg_loss1 = -ratio * mb_advs
-            pg_loss2 = -mb_advs * self.tf.clip_by_value(ratio, 1 - self.args.ppo_loss_clip, 1 + self.args.ppo_loss_clip)
-            clipped_loss = self.tf.reduce_mean(self.tf.maximum(pg_loss1, pg_loss2))
+            current_logp = self.policy_with_value.compute_logps(mb_obses, mb_actions)
+            ratio = self.tf.exp(current_logp - mb_logps)
+            pg_loss1 = ratio * mb_advs
+            pg_loss2 = mb_advs * self.tf.clip_by_value(ratio, 1 - self.args.ppo_loss_clip, 1 + self.args.ppo_loss_clip)
+            clipped_loss = -self.tf.reduce_mean(self.tf.minimum(pg_loss1, pg_loss2))
             pg_loss = clipped_loss - self.args.ent_coef * policy_entropy
             clipfrac = self.tf.reduce_mean(self.tf.cast(
                 self.tf.greater(self.tf.abs(ratio - 1.0), self.args.ppo_loss_clip), self.tf.float32))
@@ -128,7 +128,7 @@ class PPOLearner(tf.Module):
             mb_advs = self.tf.constant(self.batch_data['batch_advs'][mbinds])
             mb_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'][mbinds])
             mb_actions = self.tf.constant(self.batch_data['batch_actions'][mbinds])
-            mb_neglogps = self.tf.constant(-self.batch_data['batch_logps'][mbinds])
+            mb_logps = self.tf.constant(self.batch_data['batch_logps'][mbinds])
             mb_oldvs = self.tf.constant(self.batch_data['batch_values'][mbinds])
 
             with self.v_gradient_timer:
@@ -139,12 +139,10 @@ class PPOLearner(tf.Module):
 
             with self.policy_gradient_timer:
                 pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac = \
-                    self.policy_forward_and_backward(mb_obs, mb_actions, mb_neglogps, mb_advs)
+                    self.policy_forward_and_backward(mb_obs, mb_actions, mb_logps, mb_advs)
                 # judge_is_nan([pg_loss])
                 # judge_is_nan(policy_gradient)
                 # judge_is_nan([policy_entropy])
-            # pg_loss, all_grad, clipped_loss, policy_entropy, clipfrac, v_loss, value_mean \
-            #     = self.get_grad(mb_obs, mb_actions, mb_neglogps, mb_advs, mb_tdlambda_returns, mb_oldvs)
             value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient,
                                                                               self.args.gradient_clip_norm)
             policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,

@@ -103,9 +103,9 @@ def built_PPO_parser():
     parser.add_argument('--act_dim', default=None)
     parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
     parser.add_argument("--obs_scale", type=list, default=None)
-    parser.add_argument("--reward_preprocess_type", type=str, default='normalize')
-    parser.add_argument("--reward_scale", type=float, default=None)
-    parser.add_argument("--reward_shift", type=float, default=None)
+    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
+    parser.add_argument("--reward_scale", type=float, default=0.2)
+    parser.add_argument("--reward_shift", type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
