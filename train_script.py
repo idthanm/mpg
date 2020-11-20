@@ -15,6 +15,7 @@ import os
 
 import ray
 
+from evaluator import Evaluator
 from learners.ppo import PPOLearner
 from learners.trpo import TRPOWorker
 from optimizer import AllReduceOptimizer, TRPOOptimizer, SingleProcessOptimizer, SingleProcessTRPOOptimizer
@@ -22,7 +23,6 @@ from policy import PolicyWithValue
 from tester import Tester
 from trainer import Trainer
 from worker import OnPolicyWorker
-from evaluator import Evaluator
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
