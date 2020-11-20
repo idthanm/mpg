@@ -14,7 +14,7 @@ import numpy as np
 import ray
 import tensorflow as tf
 
-from utils.misc import TimerStat, flatvars, unflatvars, get_shapes, timed
+from utils.misc import TimerStat, flatvars, unflatvars, get_shapes
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)

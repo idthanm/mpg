@@ -267,6 +267,7 @@ def main(alg_name):
         with open(args.test_log_dir + '/test_config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
         tester = Tester(policy_cls=NAME2POLICIES[args.policy_type],
+                        evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
                         args=args)
         tester.test()
 

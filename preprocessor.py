@@ -26,7 +26,6 @@ def update_mean_var_count_from_moments(mean, var, count, batch_mean, batch_var, 
 
 
 class RunningMeanStd(object):
-    # https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Parallel_algorithm
     def __init__(self, epsilon=1e-4, shape=()):
         self.mean = np.zeros(shape, 'float64')
         self.var = np.ones(shape, 'float64')

@@ -7,8 +7,9 @@
 # @FileName: monitor.py
 # =====================================
 
-from gym.core import Wrapper
 import time
+
+from gym.core import Wrapper
 
 
 class MonitorMultiAgent(Wrapper):

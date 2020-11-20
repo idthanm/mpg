@@ -9,9 +9,9 @@
 
 import random
 import time
+from contextlib import contextmanager
 
 import numpy as np
-from contextlib import contextmanager
 import tensorflow as tf
 
 
