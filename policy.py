@@ -7,10 +7,10 @@
 # @FileName: policy.py
 # =====================================
 
+import tensorflow as tf
 from gym import spaces
 
 from model import MLPNet, MLPNetDSAC, PPONet
-import tensorflow as tf
 
 NAME2MODELCLS = dict([('MLP', MLPNet), ('DSAC', MLPNetDSAC), ('PPO', PPONet)])
 
@@ -66,11 +66,15 @@ class PolicyWithValue(tf.Module):
             self.models[i].set_weights(weight)
 
     @tf.function
-    def apply_gradients(self, iteration, grads):
+    def apply_grads_sepe(self, grads):
         value_weights_len = len(self.value.trainable_weights)
         value_grad, policy_grad = grads[:value_weights_len], grads[value_weights_len:]
         self.value_optimizer.apply_gradients(zip(value_grad, self.value.trainable_weights))
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+
+    @tf.function
+    def apply_grads_all(self, grads):
+        self.policy_optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
     def _logits2dist(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)

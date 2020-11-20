@@ -9,17 +9,17 @@
 
 import logging
 import os
+from collections import deque
 
 import gym
 import numpy as np
-from utils.monitor import Monitor
+
 from preprocessor import Preprocessor
-from utils.misc import judge_is_nan, TimerStat
+from utils.misc import TimerStat, safemean
+from utils.monitor import Monitor
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-# logger.setLevel(logging.INFO)
 
 
 class OnPolicyWorker(object):
@@ -36,8 +36,8 @@ class OnPolicyWorker(object):
         env = gym.make(env_id)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.learner = learner_cls(policy_cls, self.args)
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.learner = learner_cls(self.policy_with_value, self.args)
         self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
         self.done = False
@@ -52,13 +52,11 @@ class OnPolicyWorker(object):
         self.stats = {}
         self.sampling_timer = TimerStat()
         self.processing_timer = TimerStat()
+        self.epinfobuf = deque(maxlen=100)
         logger.info('Worker initialized')
 
     def get_stats(self):
         return self.stats
-
-    def shuffle(self):
-        self.learner.shuffle()
 
     def save_weights(self, save_dir, iteration):
         self.policy_with_value.save_weights(save_dir, iteration)
@@ -72,9 +70,11 @@ class OnPolicyWorker(object):
     def set_weights(self, weights):
         return self.policy_with_value.set_weights(weights)
 
-    def apply_gradients(self, iteration, grads):
-        iteration = self.tf.convert_to_tensor(iteration)
-        self.policy_with_value.apply_gradients(iteration, grads)
+    def apply_grads_sepe(self, grads):
+        self.policy_with_value.apply_grads_sepe(grads)
+
+    def apply_grads_all(self, grads):
+        self.policy_with_value.apply_grads_all(grads)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -90,26 +90,25 @@ class OnPolicyWorker(object):
 
     def sample_and_process(self):
         with self.sampling_timer:
-            batch_data = []
             epinfos = []
+            batch_data = []
             for _ in range(self.sample_batch_size):
-                # judge_is_nan(self.obs)
                 processed_obs = self.preprocessor.process_obs(self.obs)
-                processed_obs_tensor = self.tf.convert_to_tensor(processed_obs[np.newaxis, :])
+                processed_obs_tensor = self.tf.constant(processed_obs[np.newaxis, :])
                 action, logp = self.policy_with_value.compute_action(processed_obs_tensor)
-                # judge_is_nan(action)
-                # judge_is_nan(logp)
                 action, logp = action.numpy()[0], logp.numpy()[0]
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
-
-                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
+                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
         with self.processing_timer:
-            self.learner.get_batch_data(batch_data, epinfos)
+            self.learner.get_batch_data(batch_data)
+        self.epinfobuf.extend(epinfos)
+        self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
+                          eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
         self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
                                worker_processing_time=self.processing_timer.mean))
         if self.args.reward_preprocess_type == 'normalize':
@@ -117,7 +116,6 @@ class OnPolicyWorker(object):
                                    ret_rms_mean=self.preprocessor.ret_rms.mean))
 
     def compute_gradient_over_ith_minibatch(self, i):
-        self.learner.set_weights(self.get_weights())
         grad = self.learner.compute_gradient_over_ith_minibatch(i)
         learner_stats = self.learner.get_stats()
         self.stats.update(learner_stats)

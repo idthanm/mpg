@@ -12,7 +12,7 @@ from tensorflow import Variable
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import Dense
 
-# tf.config.experimental.set_visible_devices([], 'GPU')
+tf.config.experimental.set_visible_devices([], 'GPU')
 
 
 class MLPNet(Model):
@@ -54,10 +54,10 @@ class PPONet(Model):
                             # bias_initializer=tf.keras.initializers.Constant(0.),
                             dtype=tf.float32)
         self.sec_ = Dense(num_hidden_units,
-                            activation='tanh',
-                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
-                            # bias_initializer=tf.keras.initializers.Constant(0.),
-                            dtype=tf.float32)
+                          activation='tanh',
+                          kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                          # bias_initializer=tf.keras.initializers.Constant(0.),
+                          dtype=tf.float32)
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
                           activation=output_activation,
@@ -100,8 +100,6 @@ class MLPNetDSAC(Model):
 
 
 def test_attrib():
-    import numpy as np
-
     a = Variable(0, name='d')
 
     p = MLPNet(2, 2, 128, 1, name='ttt')

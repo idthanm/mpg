@@ -13,7 +13,7 @@ import gym
 import numpy as np
 
 from preprocessor import Preprocessor
-from utils.misc import TimerStat, safemean, judge_is_nan, flatvars
+from utils.misc import TimerStat, safemean, flatvars
 from utils.monitor import Monitor
 
 logger = logging.getLogger(__name__)
@@ -69,15 +69,13 @@ class TRPOWorker(object):
 
         return tmp
 
-    def get_batch_data(self, batch_data, epinfos):
+    def get_batch_data(self, batch_data):
         self.batch_data = self.post_processing(batch_data)
         batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
         self.batch_data.update(dict(batch_advs=batch_advs,
                                     batch_tdlambda_returns=batch_tdlambda_returns,
                                     batch_values=batch_values))
-        self.epinfobuf.extend(epinfos)
-        self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
-                          eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
+
         self.old_policy_with_value.set_weights(self.policy_with_value.get_weights())
 
     def batch_data_count(self):
@@ -107,7 +105,8 @@ class TRPOWorker(object):
     def load_ppc_params(self, load_dir):
         self.preprocessor.load_params(load_dir)
 
-    def apply_v_gradients(self, iteration, v_grads):
+    @tf.function
+    def apply_v_gradients(self, v_grads):
         self.policy_with_value.value_optimizer.apply_gradients(zip(v_grads,
                                                                    self.policy_with_value.value.trainable_weights))
 
@@ -116,14 +115,10 @@ class TRPOWorker(object):
             batch_data = []
             epinfos = []
             for _ in range(self.sample_batch_size):
-                # judge_is_nan(self.obs)
                 processed_obs = self.preprocessor.process_obs(self.obs)
                 processed_obs_tensor = self.tf.convert_to_tensor(processed_obs[np.newaxis, :])
                 action, logp = self.policy_with_value.compute_action(processed_obs_tensor)
                 action, logp = action.numpy()[0], logp.numpy()[0]
-                # print(action, logp)
-                # judge_is_nan(action)
-                # judge_is_nan(logp)
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
 
@@ -132,7 +127,10 @@ class TRPOWorker(object):
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
-        self.get_batch_data(batch_data, epinfos)
+        self.get_batch_data(batch_data)
+        self.epinfobuf.extend(epinfos)
+        self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
+                          eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
         self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
         if self.args.reward_preprocess_type == 'normalize':
             self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
@@ -199,37 +197,31 @@ class TRPOWorker(object):
         batch_actions = self.tf.constant(self.batch_data['batch_actions'])
         batch_logps = self.tf.constant(self.batch_data['batch_logps'])
 
-        with self.v_grad_timer:
-            v_loss, value_gradient, value_mean = self.value_forward_and_backward(batch_obs, batch_tdlambda_returns)
-            value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
         with self.g_grad_timer:
             pg_loss, flat_g, surr_loss, ent_bonus, policy_entropy, kl =\
                 self.compute_g(batch_obs, batch_actions, batch_logps, batch_advs)
 
         self.stats.update(dict(
-            v_timer=self.v_grad_timer.mean,
             pg_time=self.g_grad_timer.mean,
-            v_loss=v_loss.numpy(),
             policy_loss=pg_loss.numpy(),
             surr_loss=surr_loss.numpy(),
             ent_bonus=ent_bonus.numpy(),
             policy_entropy=policy_entropy.numpy(),
             kl=kl.numpy(),
-            value_mean=value_mean.numpy(),
             target_mean=np.mean(batch_tdlambda_returns),
-            value_gradient_norm=value_gradient_norm.numpy(),
         ))
 
         return flat_g.numpy()
 
     @tf.function
-    def value_forward_and_backward(self, processed_batch_obses, target):
+    def value_forward_and_backward(self, batch_obses, target):
         with self.tf.GradientTape() as tape:
-            v_pred = self.policy_with_value.compute_vf(processed_batch_obses)
+            v_pred = self.policy_with_value.compute_vf(batch_obses)
             v_loss = .5 * self.tf.reduce_mean(self.tf.square(v_pred - target))
             value_mean = self.tf.reduce_mean(v_pred)
         value_gradient = tape.gradient(v_loss, self.policy_with_value.value.trainable_weights)
-        return v_loss, value_gradient, value_mean
+        value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
+        return v_loss, value_gradient, value_mean, value_gradient_norm
 
     def value_gradient_for_ith_mb(self, i):
         if i == 0:
@@ -239,7 +231,14 @@ class TRPOWorker(object):
         mbinds = self.permutation[start_idx:end_idx]
         mb_obs = self.tf.constant(self.batch_data['batch_obs'][mbinds])
         mb_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'][mbinds])
-        v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns)
-        value_gradient, value_gradient_norm = self.tf.clip_by_global_norm(value_gradient, self.args.gradient_clip_norm)
+        with self.v_grad_timer:
+            v_loss, value_gradient, value_mean, value_gradient_norm \
+                = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns)
+        self.stats.update(dict(
+            v_timer=self.v_grad_timer.mean,
+            v_loss=v_loss.numpy(),
+            value_mean=value_mean.numpy(),
+            value_gradient_norm=value_gradient_norm.numpy(),
+        ))
 
-        return list(map(lambda x: x.numpy(), value_gradient))
+        return value_gradient

@@ -17,11 +17,12 @@ import ray
 
 from learners.ppo import PPOLearner
 from learners.trpo import TRPOWorker
-from optimizer import AllReduceOptimizer, TRPOOptimizer
+from optimizer import AllReduceOptimizer, TRPOOptimizer, SingleProcessOptimizer, SingleProcessTRPOOptimizer
 from policy import PolicyWithValue
-from worker import OnPolicyWorker
 from tester import Tester
 from trainer import Trainer
+from worker import OnPolicyWorker
+from evaluator import Evaluator
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -31,8 +32,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OnPolicyWorker', OnPolicyWorker), ('TRPOWorker', TRPOWorker)])
 NAME2LEARNERCLS = dict([('PPO', PPOLearner), ('TRPO', None)])
 NAME2BUFFERCLS = dict([('None', None),])
-NAME2OPTIMIZERCLS = dict([('AllReduce', AllReduceOptimizer), ('TRPOOptimizer', TRPOOptimizer)])
+NAME2OPTIMIZERCLS = dict([('AllReduce', AllReduceOptimizer),
+                          ('TRPOOptimizer', TRPOOptimizer),
+                          ('SingleProcess', SingleProcessOptimizer),
+                          ('SingleProcessTRPOOptimizer', SingleProcessTRPOOptimizer)])
 NAME2POLICIES = dict([('PolicyWithValue', PolicyWithValue)])
+NAME2EVALUATORS = dict([('Evaluator', Evaluator)])
+
 
 def built_PPO_parser():
     parser = argparse.ArgumentParser()
@@ -59,7 +65,8 @@ def built_PPO_parser():
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithValue')
     parser.add_argument('--worker_type', type=str, default='OnPolicyWorker')
-    parser.add_argument('--optimizer_type', type=str, default='AllReduce')
+    parser.add_argument('--optimizer_type', type=str, default='SingleProcess')
+    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='None')
     parser.add_argument('--off_policy', type=str, default=False)
 
@@ -92,8 +99,8 @@ def built_PPO_parser():
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
     parser.add_argument("--policy_model_cls", type=str, default='PPO')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-3, 500000, 3e-5])
-    parser.add_argument("--value_lr_schedule", type=list, default=[3e-3, 500000, 3e-5])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 500000, 0.])
+    parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 500000, 0.])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=64)
     parser.add_argument("--policy_out_activation", type=str, default='linear')
@@ -110,7 +117,7 @@ def built_PPO_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=16)
+    parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument("--eval_interval", type=int, default=10)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
@@ -152,7 +159,8 @@ def built_TRPO_parser():
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithValue')
     parser.add_argument('--worker_type', type=str, default='TRPOWorker')
-    parser.add_argument('--optimizer_type', type=str, default='TRPOOptimizer')
+    parser.add_argument('--optimizer_type', type=str, default='SingleProcessTRPOOptimizer')
+    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='None')
     parser.add_argument('--off_policy', type=str, default=False)
 
@@ -192,13 +200,13 @@ def built_TRPO_parser():
     parser.add_argument("--policy_lr_schedule", type=list, default=[1e-3, 1000, 1e-3])
     parser.add_argument("--value_lr_schedule", type=list, default=[1e-3, 1000, 1e-3])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
-    parser.add_argument('--num_hidden_units', type=int, default=32)
+    parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument("--policy_out_activation", type=str, default='linear')
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument("--obs_preprocess_type", type=str, default='normalize')
+    parser.add_argument("--obs_preprocess_type", type=str, default=None)
     parser.add_argument("--obs_scale", type=list, default=None)
     parser.add_argument("--reward_preprocess_type", type=str, default=None)
     parser.add_argument("--reward_scale", type=float, default=None)
@@ -207,7 +215,7 @@ def built_TRPO_parser():
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=1000)
-    parser.add_argument('--num_workers', type=int, default=16)
+    parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument("--eval_interval", type=int, default=10)
     parser.add_argument("--save_interval", type=int, default=10)
     parser.add_argument("--log_interval", type=int, default=1)
@@ -244,6 +252,7 @@ def main(alg_name):
                           learner_cls=NAME2LEARNERCLS[args.alg_name],
                           buffer_cls=NAME2BUFFERCLS[args.buffer_type],
                           optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
+                          evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
                           args=args)
         if args.model_load_dir is not None:
             logger.info('loading model')
