@@ -105,11 +105,16 @@ class PPOLearner(tf.Module):
     #     return pg_loss, policy_gradient, clipped_loss, policy_entropy, clipfrac
 
     @tf.function
-    def get_grads(self, mb_obses, mb_actions, mb_logps, mb_advs, target):
+    def get_grads(self, mb_obses, mb_actions, mb_logps, mb_advs, target, mb_oldvs):
         mb_advs = (mb_advs - self.tf.reduce_mean(mb_advs)) / (self.tf.keras.backend.std(mb_advs) + 1e-8)
         with self.tf.GradientTape() as tape:
             v_pred = self.policy_with_value.compute_vf(mb_obses)
-            v_loss = .5 * self.tf.reduce_mean(self.tf.square(v_pred - target))
+            vpredclipped = mb_oldvs + self.tf.clip_by_value(v_pred - mb_oldvs,
+                                                            -self.args.ppo_loss_clip,
+                                                            self.args.ppo_loss_clip)
+            v_loss1 = self.tf.square(v_pred - target)
+            v_loss2 = self.tf.square(vpredclipped - target)
+            v_loss = .5 * self.tf.reduce_mean(self.tf.maximum(v_loss1, v_loss2))
 
             current_logp = self.policy_with_value.compute_logps(mb_obses, mb_actions)
             ratio = self.tf.exp(current_logp - mb_logps)
@@ -142,7 +147,7 @@ class PPOLearner(tf.Module):
             mb_tdlambda_returns = self.tf.constant(self.batch_data['batch_tdlambda_returns'][mbinds])
             mb_actions = self.tf.constant(self.batch_data['batch_actions'][mbinds])
             mb_logps = self.tf.constant(self.batch_data['batch_logps'][mbinds])
-            # mb_oldvs = self.tf.constant(self.batch_data['batch_values'][mbinds])
+            mb_oldvs = self.tf.constant(self.batch_data['batch_values'][mbinds])
 
             # with self.v_gradient_timer:
             #     v_loss, value_gradient, value_mean = self.value_forward_and_backward(mb_obs, mb_tdlambda_returns, mb_oldvs)
@@ -156,7 +161,7 @@ class PPOLearner(tf.Module):
             # policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
             #                                                                     self.args.gradient_clip_norm)
             grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean = \
-                self.get_grads(mb_obs, mb_actions, mb_logps, mb_advs, mb_tdlambda_returns)
+                self.get_grads(mb_obs, mb_actions, mb_logps, mb_advs, mb_tdlambda_returns, mb_oldvs)
 
         self.stats = dict(
             v_timer=self.v_gradient_timer.mean,

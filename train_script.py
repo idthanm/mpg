@@ -488,4 +488,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('TRPO')
+    main('PPO')
