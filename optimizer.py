@@ -276,18 +276,18 @@ class SingleProcessTRPOOptimizer(object):
                 lm = np.sqrt(shs / self.args.max_kl)
                 fullstep = stepdir / lm
                 expectedimprove = flat_g.dot(fullstep)
-                pglossbefore = worker_stats_before['policy_loss']
+                pggainbefore = worker_stats_before['pg_gain']
                 stepsize = 1.0
                 thbefore = self.worker.policy_with_value.policy.get_weights()
                 self.search_result = 1
                 for _ in range(10):
-                    thnew_flat = flatvars(thbefore) - fullstep * stepsize
+                    thnew_flat = flatvars(thbefore) + fullstep * stepsize
                     thnew = unflatvars(thnew_flat, get_shapes(self.worker.policy_with_value.policy.trainable_weights))
                     self.worker.policy_with_value.policy.set_weights(thnew)
                     self.worker.prepare_for_policy_update()
                     worker_stats = self.worker.get_stats()
-                    pgloss, kl = worker_stats['policy_loss'], worker_stats['kl']
-                    improve = pgloss - pglossbefore
+                    pggain, kl = worker_stats['pg_gain'], worker_stats['kl']
+                    improve = pggain - pggainbefore
                     logger.info("Expected: {:.3f} Actual: {:.3f}".format(expectedimprove, improve))
                     if not np.isfinite(list(worker_stats.values())).all():
                         logger.info("Got non-finite value of losses -- bad!")
@@ -438,7 +438,7 @@ class TRPOOptimizer(object):
                 lm = np.sqrt(shs / self.args.max_kl)
                 fullstep = stepdir / lm
                 expectedimprove = mean_flat_g.dot(fullstep)
-                pglossbefore = mean_stats_before['policy_loss']
+                pggainbefore = mean_stats_before['pg_gain']
                 stepsize = 1.0
                 thbefore = self.local_worker.policy_with_value.policy.get_weights()
                 self.search_result = 1
@@ -453,8 +453,8 @@ class TRPOOptimizer(object):
                     for key in worker_stats[0].keys():
                         value_list = list(map(lambda x: x[key], worker_stats))
                         mean_stats.update({key: sum(value_list) / len(value_list)})
-                    pgloss, kl = mean_stats['policy_loss'], mean_stats['kl']
-                    improve = pgloss - pglossbefore
+                    pggain, kl = mean_stats['pg_gain'], mean_stats['kl']
+                    improve = pggain - pggainbefore
                     logger.info("Expected: {:.3f} Actual: {:.3f}".format(expectedimprove, improve))
                     if not np.isfinite(list(mean_stats.values())).all():
                         logger.info("Got non-finite value of losses -- bad!")

@@ -183,12 +183,12 @@ class TRPOWorker(object):
             policy_entropy = self.policy_with_value.compute_entropy(batch_obses)
             current_logp = self.policy_with_value.compute_logps(batch_obses, batch_actions)
             ratio = self.tf.exp(current_logp - batch_logps)
-            surr_loss = -self.tf.reduce_mean(ratio * batch_advs)
+            surr_gain = self.tf.reduce_mean(ratio * batch_advs)
             ent_bonus = self.args.ent_coef * policy_entropy
-            pg_loss = surr_loss - ent_bonus
-        g = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
+            pg_gain = surr_gain + ent_bonus
+        g = tape.gradient(pg_gain, self.policy_with_value.policy.trainable_weights)
         flat_g = flatvars(g)
-        return pg_loss, flat_g, surr_loss, ent_bonus, policy_entropy, kl
+        return pg_gain, flat_g, surr_gain, ent_bonus, policy_entropy, kl
 
     def prepare_for_policy_update(self):
         batch_obs = self.tf.constant(self.batch_data['batch_obs'])
@@ -198,13 +198,13 @@ class TRPOWorker(object):
         batch_logps = self.tf.constant(self.batch_data['batch_logps'])
 
         with self.g_grad_timer:
-            pg_loss, flat_g, surr_loss, ent_bonus, policy_entropy, kl =\
+            pg_gain, flat_g, surr_gain, ent_bonus, policy_entropy, kl =\
                 self.compute_g(batch_obs, batch_actions, batch_logps, batch_advs)
 
         self.stats.update(dict(
             pg_time=self.g_grad_timer.mean,
-            policy_loss=pg_loss.numpy(),
-            surr_loss=surr_loss.numpy(),
+            pg_gain=pg_gain.numpy(),
+            surr_gain=surr_gain.numpy(),
             ent_bonus=ent_bonus.numpy(),
             policy_entropy=policy_entropy.numpy(),
             kl=kl.numpy(),
