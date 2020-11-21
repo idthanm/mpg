@@ -281,7 +281,7 @@ class SingleProcessTRPOOptimizer(object):
                 thbefore = self.worker.policy_with_value.policy.get_weights()
                 self.search_result = 1
                 for _ in range(10):
-                    thnew_flat = flatvars(thbefore) + fullstep * stepsize
+                    thnew_flat = flatvars(thbefore) - fullstep * stepsize
                     thnew = unflatvars(thnew_flat, get_shapes(self.worker.policy_with_value.policy.trainable_weights))
                     self.worker.policy_with_value.policy.set_weights(thnew)
                     self.worker.prepare_for_policy_update()
@@ -443,7 +443,7 @@ class TRPOOptimizer(object):
                 thbefore = self.local_worker.policy_with_value.policy.get_weights()
                 self.search_result = 1
                 for _ in range(10):
-                    thnew_flat = flatvars(thbefore) + fullstep * stepsize
+                    thnew_flat = flatvars(thbefore) - fullstep * stepsize
                     thnew = unflatvars(thnew_flat, get_shapes(self.local_worker.policy_with_value.policy.trainable_weights))
                     self.local_worker.policy_with_value.policy.set_weights(thnew)
                     self.sync_remote_workers()
