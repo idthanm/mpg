@@ -59,12 +59,13 @@ class SingleProcessOptimizer(object):
             with self.sampling_timer:
                 self.worker.sample_and_process()
             all_stats = []
+            lrnow = 3e-4*(1.-self.iteration/488)
             with self.learning_timer:
                 for i in range(self.args.epoch):
                     for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                         mb_grads = self.worker.compute_gradient_over_ith_minibatch(mb_index)
                         worker_stats = self.worker.get_stats()
-                        self.worker.apply_grads_all(mb_grads)
+                        self.worker.apply_grads_all(mb_grads, lrnow)
                         all_stats.append(worker_stats)
 
         all_reduced_stats = {}

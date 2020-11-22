@@ -73,8 +73,9 @@ class OnPolicyWorker(object):
     def apply_grads_sepe(self, grads):
         self.policy_with_value.apply_grads_sepe(grads)
 
-    def apply_grads_all(self, grads):
-        self.policy_with_value.apply_grads_all(grads)
+    def apply_grads_all(self, grads, lr):
+        lr = self.tf.constant(lr, dtype=self.tf.float32)
+        self.policy_with_value.apply_grads_all(grads, lr)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()

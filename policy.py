@@ -73,7 +73,9 @@ class PolicyWithValue(tf.Module):
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
 
     @tf.function
-    def apply_grads_all(self, grads):
+    def apply_grads_all(self, grads, lr):
+        self.policy_optimizer.learning_rate = lr
+        self.tf.print(self.policy_optimizer.learning_rate)
         self.policy_optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
     def _logits2dist(self, logits):
