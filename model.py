@@ -37,7 +37,6 @@ class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, hidden_activation, output_dim, **kwargs):
         super(MLPNet, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
-                            input_shape=(None, input_dim),
                             activation=hidden_activation,
                             kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
                             # bias_initializer=tf.keras.initializers.Constant(0.),
@@ -66,20 +65,17 @@ class PPONet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, hidden_activation, output_dim, **kwargs):
         super(PPONet, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
-                            input_shape=(None, input_dim),
                             activation=hidden_activation,
                             kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
-                            # bias_initializer=tf.keras.initializers.Constant(0.),
                             dtype=tf.float32)
         self.sec_ = Dense(num_hidden_units,
                           activation=hidden_activation,
                           kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
-                          # bias_initializer=tf.keras.initializers.Constant(0.),
                           dtype=tf.float32)
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
                           activation=output_activation,
-                          kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
+                          kernel_initializer=ortho_init(0.01),  # tf.keras.initializers.Orthogonal(1.414),
                           bias_initializer=tf.keras.initializers.Constant(0.),
                           dtype=tf.float32)
         self.logstd = tf.Variable(initial_value=tf.zeros((1, int(output_dim/2))), name='pi/logstd', dtype=tf.float32)
@@ -89,8 +85,7 @@ class PPONet(Model):
         x = self.first_(x)
         x = self.sec_(x)
         mean = self.mean(x)
-        logstd = tf.tile(self.logstd, (tf.shape(mean)[0], 1))
-        out = tf.concat([mean, logstd], axis=1)
+        out = tf.concat([mean, mean * tf.constant(0.) + self.logstd], axis=1)
         return out
 
 
@@ -98,7 +93,6 @@ class MLPNetDSAC(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, hidden_activation, output_dim, **kwargs):
         super(MLPNetDSAC, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
-                            input_shape=(None, input_dim),
                             activation=hidden_activation,
                             kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
                             dtype=tf.float32)
@@ -138,6 +132,7 @@ class MLPNetDSAC(Model):
         return tf.concat([mean, logstd], axis=-1)
 
 
+
 def test_attrib():
     a = Variable(0, name='d')
 
@@ -172,20 +167,12 @@ def test_out():
     out = [Q(inp) for Q in Qs]
     print(out)
 
-
-def test_memory():
-    import time
-    Q = MLPNet(8, 2, 128, 1)
-    time.sleep(111111)
-
-
-def test_memory2():
-    import time
-    model = tf.keras.Sequential([tf.keras.layers.Dense(10, input_shape=(30,), activation='relu'),
-                                 tf.keras.layers.Dense(20, activation='relu'),
-                                 tf.keras.layers.Dense(20, activation='relu'),
-                                 tf.keras.layers.Dense(10, activation='relu')])
-    time.sleep(10000)
+def test_dense():
+    first_ = Dense(3,
+                kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                dtype=tf.float32)
+    first_.build(input_shape=(3.))
+    print(1)
 
 
 def test_dsac_net():
@@ -197,12 +184,41 @@ def test_dsac_net():
 
 def test_ppo_net():
     import numpy as np
-    net = PPONet(3,2,64,2,name='policy')
+    net = PPONet(3, 2, 64, 'tanh', 2, name='policy')
+
+    def out(net, inpu):
+        out = net(inpu)
+        return out
+
     inpu = np.random.random((10, 3))
-    out = net(inpu)
-    print(net.trainable_weights)
+    print(out(net, inpu))
+
+def test_sequ():
+    def create_a_sequ_model():
+        model = tf.keras.Sequential([Dense(30, activation='tanh'),
+                                     Dense(20, activation='tanh')])
+        model.build(input_shape=(None, 3))
+        print(model.summary())
+        return model
+    model = create_a_sequ_model()
+
+    inpu = np.random.random((10, 3))
+    out = model(inpu)
+    print(out)
+
+def test_funcapi():
+    def create_funcapi_model():
+        inpu = tf.keras.Input(shape=(3,))
+        x = Dense(20, activation='tanh')(inpu)
+        out = Dense(20, activation='tanh')(x)
+        model = tf.keras.Model(inputs=inpu, outputs=out)
+        print(model.summary())
+        return model
+    model = create_funcapi_model()
+    inpu = np.random.random((10, 3))
+    out = model(inpu)
     print(out)
 
 
 if __name__ == '__main__':
-    test_ppo_net()
+    test_sequ()

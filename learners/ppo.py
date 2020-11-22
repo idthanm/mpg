@@ -53,6 +53,7 @@ class PPOLearner(tf.Module):
         self.batch_data.update(dict(batch_advs=batch_advs,
                                     batch_tdlambda_returns=batch_tdlambda_returns,
                                     batch_values=batch_values))
+        return self.batch_data
 
     def batch_data_count(self):
         return len(self.batch_data['batch_obs'])

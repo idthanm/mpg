@@ -106,9 +106,11 @@ class OnPolicyWorker(object):
                     epinfos.append(maybeepinfo)
                 batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
         with self.processing_timer:
-            self.learner.get_batch_data(batch_data)
+            data = self.learner.get_batch_data(batch_data)
+        ev = 1. - np.var(data['batch_tdlambda_returns']-data['batch_values'])/np.var(data['batch_tdlambda_returns'])
         self.epinfobuf.extend(epinfos)
-        self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
+        self.stats.update(explained_variance=ev,
+                          eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
                           eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
         self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
                                worker_processing_time=self.processing_timer.mean))
