@@ -61,7 +61,7 @@ class PPONet(Model):
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
                           activation=output_activation,
-                          kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                          kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
                           bias_initializer=tf.keras.initializers.Constant(0.),
                           dtype=tf.float32)
         self.logstd = tf.Variable(initial_value=tf.zeros((1, int(output_dim/2))), name='pi/logstd', dtype=tf.float32)
@@ -99,12 +99,12 @@ class MLPNetDSAC(Model):
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
                           activation=output_activation,
-                          kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                          kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
                           bias_initializer=tf.keras.initializers.Constant(0.),
                           dtype=tf.float32)
         self.logstd = Dense(int(output_dim/2),
                             activation=output_activation,
-                            kernel_initializer=tf.keras.initializers.Orthogonal(1.),
+                            kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
                             bias_initializer=tf.keras.initializers.Constant(0.),
                             dtype=tf.float32)
 

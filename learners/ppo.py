@@ -126,6 +126,7 @@ class PPOLearner(tf.Module):
             ent_bonus = self.args.ent_coef * policy_entropy
 
             value_mean = self.tf.reduce_mean(v_pred)
+            approxkl = .5 * tf.reduce_mean(tf.square(current_logp - mb_logps))
             clipfrac = self.tf.reduce_mean(self.tf.cast(
                 self.tf.greater(self.tf.abs(ratio - 1.0), self.args.ppo_loss_clip), self.tf.float32))
 
@@ -133,7 +134,7 @@ class PPOLearner(tf.Module):
 
         grads = tape.gradient(total_loss, self.policy_with_value.trainable_variables)
         grad, grad_norm = self.tf.clip_by_global_norm(grads, self.args.gradient_clip_norm)
-        return grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean
+        return grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean, approxkl
 
     def compute_gradient_over_ith_minibatch(self, i):  # compute gradient of the i-th mini-batch
         if i == 0:
@@ -160,7 +161,7 @@ class PPOLearner(tf.Module):
             #                                                                   self.args.gradient_clip_norm)
             # policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
             #                                                                     self.args.gradient_clip_norm)
-            grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean = \
+            grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean, approxkl = \
                 self.get_grads(mb_obs, mb_actions, mb_logps, mb_advs, mb_tdlambda_returns, mb_oldvs)
 
         self.stats = dict(
@@ -176,7 +177,8 @@ class PPOLearner(tf.Module):
             # value_gradient_norm=value_gradient_norm.numpy(),
             # policy_gradient_norm=policy_gradient_norm.numpy(),
             grad_norm=grad_norm.numpy(),
-            clipfrac=clipfrac.numpy()
+            clipfrac=clipfrac.numpy(),
+            approxkl=approxkl.numpy()
         )
 
         # gradient_tensor = value_gradient + policy_gradient

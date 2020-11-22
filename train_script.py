@@ -98,8 +98,8 @@ def built_PPO_parser():
     # policy and model
     parser.add_argument("--value_model_cls", type=str, default='MLP')
     parser.add_argument("--policy_model_cls", type=str, default='PPO')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 320000, 0.])
-    parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 320000, 0.])
+    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-4, 320*488, 0.])
+    parser.add_argument("--value_lr_schedule", type=list, default=[3e-4, 320*488, 0.])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=64)
     parser.add_argument('--hidden_activation', type=str, default='tanh')
@@ -116,7 +116,7 @@ def built_PPO_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=1000)
+    parser.add_argument('--max_iter', type=int, default=488)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument("--eval_interval", type=int, default=10)
     parser.add_argument("--save_interval", type=int, default=10)
@@ -232,7 +232,6 @@ def built_TRPO_parser():
     parser.add_argument("--ppc_load_dir", type=str, default=None)
 
     return parser.parse_args()
-
 
 def built_PPO_parser_for_DSAC():
     parser = argparse.ArgumentParser()
