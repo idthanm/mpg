@@ -151,7 +151,7 @@ class PolicyWithValue(tf.Module):
     @tf.function
     def compute_vf(self, obs):
         with self.tf.name_scope('compute_value') as scope:
-            return self.value(obs)
+            return tf.squeeze(self.value(obs), axis=1)
 
 
 def test_logps():
