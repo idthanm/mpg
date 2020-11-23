@@ -17,9 +17,179 @@ import numpy as np
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, safemean
 from utils.monitor import Monitor
+import tensorflow as tf
+from policy import PolicyWithValue
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+
+class Runner(object):
+    def __init__(self, env, model, nsteps, gamma, lam, args):
+        # Lambda used in GAE (General Advantage Estimation)
+        self.args = args
+        self.lam = lam
+        self.nsteps = nsteps
+        # Discount rate
+        self.gamma = gamma
+        self.env = env
+        self.obs = self.env.reset()
+        self.model = model
+        self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
+                                         gamma=self.args.gamma)
+        self.dones = False
+
+    def run(self):
+        # Here, we init the lists that will contain the mb of experiences
+        mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_logps = [],[],[],[],[],[]
+        epinfos = []
+        # For n in range number of steps
+        for _ in range(self.nsteps):
+            # Given observations, get action value and neglopacs
+            # We already have self.obs because Runner superclass run self.obs[:] = env.reset() on init
+            obs = self.preprocessor.process_obs(self.obs)
+            actions, logps, values = self.model.step(tf.constant(obs[np.newaxis, :]))
+            actions = actions[0]._numpy()
+            mb_obs.append(obs.copy())
+            mb_actions.append(actions)
+            mb_values.append(values[0]._numpy())
+            mb_logps.append(logps[0]._numpy())
+            mb_dones.append(self.dones)
+
+            # Take actions in env and look the results
+            # Infos contains a ton of useful informations
+            self.obs, rewards, self.dones, infos = self.env.step(actions)
+            if self.dones:
+                self.obs = self.env.reset()
+            maybeepinfo = infos.get('episode')
+            if maybeepinfo: epinfos.append(maybeepinfo)
+            proc_rew = self.preprocessor.process_rew(rewards, self.dones)
+            mb_rewards.append(proc_rew)
+
+        #batch of steps to batch of rollouts
+        mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
+        mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
+        mb_actions = np.asarray(mb_actions)
+        mb_values = np.asarray(mb_values, dtype=np.float32)
+        mb_logps = np.asarray(mb_logps, dtype=np.float32)
+        mb_dones = np.asarray(mb_dones, dtype=np.bool)
+        obs = self.preprocessor.process_obs(self.obs)
+        last_values = self.model.value(tf.constant(obs[np.newaxis, :]))._numpy()[0]
+
+        # discount/bootstrap off value fn
+        mb_returns = np.zeros_like(mb_rewards)
+        mb_advs = np.zeros_like(mb_rewards)
+        lastgaelam = 0
+        for t in reversed(range(self.nsteps)):
+            if t == self.nsteps - 1:
+                nextnonterminal = 1.0 - self.dones
+                nextvalues = last_values
+            else:
+                nextnonterminal = 1.0 - mb_dones[t+1]
+                nextvalues = mb_values[t+1]
+            delta = mb_rewards[t] + self.gamma * nextvalues * nextnonterminal - mb_values[t]
+            mb_advs[t] = lastgaelam = delta + self.gamma * self.lam * nextnonterminal * lastgaelam
+        mb_returns = mb_advs + mb_values
+        return mb_obs, mb_returns, mb_dones, mb_actions, mb_values, mb_logps, epinfos
+
+
+class Model(tf.Module):
+    def __init__(self, obs_space, act_space, args):
+        super(Model, self).__init__(name='PPO2Model')
+        self.train_model = PolicyWithValue(obs_space, act_space, args)
+        self.optimizer = tf.keras.optimizers.Adam()
+        self.ent_coef = args.ent_coef
+        self.vf_coef = 0.5
+        self.max_grad_norm = args.gradient_clip_norm
+        self.loss_names = ['policy_loss', 'value_loss', 'policy_entropy', 'approxkl', 'clipfrac']
+
+    @tf.function
+    def step(self, obs):
+        action, logp = self.train_model.compute_action(obs)
+        value = self.train_model.compute_vf(obs)
+        return action, logp, value
+
+    @tf.function
+    def value(self, obs):
+        return self.train_model.compute_vf(obs)
+
+    def train(self, lr, cliprange, obs, returns, actions, values, logp_old):
+        grads, pg_loss, vf_loss, entropy, approxkl, clipfrac = self.get_grad(
+            cliprange, obs, returns, actions, values, logp_old)
+        self.optimizer.learning_rate = lr
+        grads_and_vars = zip(grads, self.train_model.trainable_variables)
+        self.optimizer.apply_gradients(grads_and_vars)
+
+        return pg_loss, vf_loss, entropy, approxkl, clipfrac
+
+    # @tf.function
+    def get_grad(self, cliprange, obs, returns, actions, values, logp_old):
+        # Here we calculate advantage A(s,a) = R + yV(s') - V(s)
+        # Returns = R + yV(s')
+        advs = returns - values
+
+        # Normalize the advantages
+        advs = (advs - tf.reduce_mean(advs)) / (tf.keras.backend.std(advs) + 1e-8)
+
+        with tf.GradientTape() as tape:
+            logp = self.train_model.compute_logps(obs, actions)
+            entropy = self.train_model.compute_entropy(obs)
+            vpred = self.train_model.compute_vf(obs)
+            vpredclipped = values + tf.clip_by_value(vpred - values, -cliprange, cliprange)
+            vf_losses1 = tf.square(vpred - returns)
+            vf_losses2 = tf.square(vpredclipped - returns)
+            vf_loss = .5 * tf.reduce_mean(tf.maximum(vf_losses1, vf_losses2))
+
+            ratio = tf.exp(logp - logp_old)
+            pg_losses1 = -advs * ratio
+            pg_losses2 = -advs * tf.clip_by_value(ratio, 1-cliprange, 1+cliprange)
+            pg_loss = tf.reduce_mean(tf.maximum(pg_losses1, pg_losses2))
+
+            approxkl = .5 * tf.reduce_mean(tf.square(logp_old-logp))
+            clipfrac = tf.reduce_mean(tf.cast(tf.greater(tf.abs(ratio - 1.0), cliprange), tf.float32))
+
+            loss = pg_loss - entropy * self.ent_coef + vf_loss * self.vf_coef
+
+        var_list = self.train_model.trainable_variables
+        grads = tape.gradient(loss, var_list)
+        if self.max_grad_norm is not None:
+            grads, _ = tf.clip_by_global_norm(grads, self.max_grad_norm)
+        return grads, pg_loss, vf_loss, entropy, approxkl, clipfrac
+
+
+def learn():
+    from train_script import built_PPO_parser
+    args = built_PPO_parser()
+    env = Monitor(gym.make('Pendulum-v0'))
+    model = Model(env.observation_space, env.action_space, args)
+    runner = Runner(env, model, 2048, 0.99, 0.95, args)
+    epinfobuf = deque(maxlen=100)
+    for i in range(1, 488):
+        lr = 3e-4*(1.-(i-1.)/488.)
+        obs, returns, dones, actions, values, logps, epinfo = runner.run()
+        epinfobuf.extend(epinfo)
+        inds = np.arange(2048)
+        mblossvals = []
+
+        for _ in range(10):
+            np.random.shuffle(inds)
+            for start in range(0, 2048, 64):
+                end = start + 64
+                mbinds = inds[start:end]
+                slices = (tf.constant(arr[mbinds]) for arr in (obs, returns, actions, values, logps))
+                mblossvals.append(model.train(lr, 0.2, *slices))
+        lossvals = np.mean(mblossvals, axis=0)
+        ev = 1. - np.var(returns-values)/np.var(returns)
+        print("misc/serial_timesteps", i*2048)
+        print("misc/nupdates", i)
+        print("misc/explained_variance", float(ev))
+        print('eprewmean', safemean([epinfo['r'] for epinfo in epinfobuf]))
+        print('eplenmean', safemean([epinfo['l'] for epinfo in epinfobuf]))
+        for (lossval, lossname) in zip(lossvals, model.loss_names):
+            print('loss/' + lossname, lossval)
+        print('\n')
+
 
 
 class PPOWorker(object):
@@ -36,6 +206,7 @@ class PPOWorker(object):
         env = gym.make(env_id)
         self.env = Monitor(env)
         obs_space, act_space = self.env.observation_space, self.env.action_space
+
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.sample_batch_size = self.args.sample_batch_size
         self.obs = self.env.reset()
@@ -213,6 +384,10 @@ class PPOWorker(object):
         ))
 
         return grad
+
+
+if __name__ == "__main__":
+    learn()
 
 
 
