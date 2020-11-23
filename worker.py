@@ -123,7 +123,7 @@ class Model(tf.Module):
 
         return pg_loss, vf_loss, entropy, approxkl, clipfrac
 
-    # @tf.function
+    @tf.function
     def get_grad(self, cliprange, obs, returns, actions, values, logp_old):
         # Here we calculate advantage A(s,a) = R + yV(s') - V(s)
         # Returns = R + yV(s')
@@ -161,7 +161,7 @@ class Model(tf.Module):
 def learn():
     from train_script import built_PPO_parser
     args = built_PPO_parser()
-    env = Monitor(gym.make('Pendulum-v0'))
+    env = Monitor(gym.make('Ant-v2'))
     model = Model(env.observation_space, env.action_space, args)
     runner = Runner(env, model, 2048, 0.99, 0.95, args)
     epinfobuf = deque(maxlen=100)

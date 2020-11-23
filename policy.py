@@ -25,10 +25,57 @@ class PolicyWithValue(tf.Module):
     def __init__(self, obs_space, act_space, args):
         super().__init__()
         self.args = args
+        assert isinstance(obs_space, spaces.Box)
+        assert isinstance(act_space, spaces.Box)
         obs_dim = obs_space.shape[0] if args.obs_dim is None else self.args.obs_dim
         act_dim = act_space.shape[0] if args.act_dim is None else self.args.act_dim
-        self.policy = PPONet(obs_dim, 2, 64, 'tanh', act_dim * 2, name='policy', output_activation='linear')
-        self.value = MLPNet(obs_dim, 2, 64, 'tanh', 1, name='value')
+        n_hiddens, n_units, hidden_activation = self.args.num_hidden_layers, self.args.num_hidden_units, self.args.hidden_activation
+        value_model_cls = NAME2MODELCLS[self.args.value_model_cls]
+        policy_model_cls = NAME2MODELCLS[self.args.policy_model_cls]
+        self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy',
+                                       output_activation=self.args.policy_out_activation)
+        self.value = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='value')
+        self.models = (self.policy, self.value,)
+        policy_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.policy_lr_schedule)
+        value_lr_schedule = self.tf.keras.optimizers.schedules.PolynomialDecay(*self.args.value_lr_schedule)
+        self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule)
+        self.value_optimizer = self.tf.keras.optimizers.Adam(value_lr_schedule)
+        self.optimizers = (self.policy_optimizer, self.value_optimizer,)
+
+    def save_weights(self, save_dir, iteration):
+        model_pairs = [(model.name, model) for model in self.models]
+        optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
+        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + optimizer_pairs))
+        ckpt.save(save_dir + '/ckpt_ite' + str(iteration))
+
+    def load_weights(self, load_dir, iteration):
+        model_pairs = [(model.name, model) for model in self.models]
+        optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
+        ckpt = self.tf.train.Checkpoint(**dict(model_pairs + optimizer_pairs))
+        ckpt.restore(load_dir + '/ckpt_ite' + str(iteration) + '-1')
+
+    def get_weights(self):
+        return [model.get_weights() for model in self.models]
+
+    # @property
+    # def trainable_weights(self):
+    #     return self.tf.nest.flatten([model.trainable_weights for model in self.models])
+
+    def set_weights(self, weights):
+        for i, weight in enumerate(weights):
+            self.models[i].set_weights(weight)
+
+    @tf.function
+    def apply_grads_sepe(self, grads):
+        value_weights_len = len(self.value.trainable_weights)
+        value_grad, policy_grad = grads[:value_weights_len], grads[value_weights_len:]
+        self.value_optimizer.apply_gradients(zip(value_grad, self.value.trainable_weights))
+        self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+
+    @tf.function
+    def apply_grads_all(self, grads, lr):
+        self.policy_optimizer.learning_rate = lr
+        self.policy_optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
     def _logits2dist(self, logits):
         mean, log_std = self.tf.split(logits, num_or_size_splits=2, axis=-1)
