@@ -46,20 +46,19 @@ class PPOLearner(tf.Module):
         return tmp
 
     def get_batch_data(self, batch_data):
-        # self.batch_data = self.post_processing(batch_data)  # batch_data
-        # batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
-        # self.batch_data.update(dict(batch_advs=batch_advs,
-        #                             batch_tdlambda_returns=batch_tdlambda_returns,
-        #                             batch_values=batch_values))
-        self.batch_data = batch_data
-        # return self.batch_data
+        self.batch_data = self.post_processing(batch_data)  # batch_data
+        batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
+        self.batch_data.update(dict(batch_advs=batch_advs,
+                                    batch_tdlambda_returns=batch_tdlambda_returns,
+                                    batch_values=batch_values))
+        return self.batch_data
 
     def compute_advantage(self):  # require data is in order
         n_steps = len(self.batch_data['batch_rewards'])
         batch_obs = self.batch_data['batch_obs']
         batch_rewards = self.batch_data['batch_rewards']
         batch_obs_tensor = self.tf.constant(batch_obs)
-        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()[:, 0]  # len = n_steps + 1
+        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()  # len = n_steps + 1
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):

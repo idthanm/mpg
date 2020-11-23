@@ -91,22 +91,13 @@ class OnPolicyWorker(object):
 
     def sample_and_process(self):
         with self.sampling_timer:
-            mb_obs, mb_rewards, mb_actions, mb_values, mb_dones, mb_logps = [], [], [], [], [], []
-
             epinfos = []
             batch_data = []
             for _ in range(self.sample_batch_size):
                 processed_obs = self.preprocessor.process_obs(self.obs)
                 processed_obs_tensor = self.tf.constant(processed_obs[np.newaxis, :])
                 action, logp = self.policy_with_value.compute_action(processed_obs_tensor)
-                value = self.policy_with_value.compute_vf(processed_obs_tensor)
-                action, logp, value = action.numpy()[0], logp.numpy()[0], value.numpy()[0]
-
-                mb_obs.append(processed_obs.copy())
-                mb_actions.append(action)
-                mb_values.append(value)
-                mb_logps.append(logp)
-                mb_dones.append(self.done)
+                action, logp = action.numpy()[0], logp.numpy()[0]
 
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
@@ -114,44 +105,12 @@ class OnPolicyWorker(object):
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
-                mb_rewards.append(processed_rew)
 
-                # batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
-            mb_obs = np.asarray(mb_obs, dtype=self.obs.dtype)
-            mb_rewards = np.asarray(mb_rewards, dtype=np.float32)
-            mb_actions = np.asarray(mb_actions)
-            mb_values = np.asarray(mb_values, dtype=np.float32)
-            mb_logps = np.asarray(mb_logps, dtype=np.float32)
-            mb_dones = np.asarray(mb_dones, dtype=np.bool)
-            processed_obs = self.preprocessor.process_obs(self.obs)
-            processed_obs_tensor = self.tf.constant(processed_obs[np.newaxis, :])
-            last_values = self.policy_with_value.compute_vf(processed_obs_tensor).numpy()[0]
+                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
 
-            mb_advs = np.zeros_like(mb_rewards)
-            lastgaelam = 0
-            for t in reversed(range(self.sample_batch_size-1)):
-                # if t == self.sample_batch_size - 1:
-                #     nextnonterminal = 1.0 - self.done
-                #     nextvalues = last_values
-                # else:
-                nextnonterminal = 1.0 - mb_dones[t + 1]
-                nextvalues = mb_values[t + 1]
-                delta = mb_rewards[t] + self.args.gamma * nextvalues * nextnonterminal - mb_values[t]
-                mb_advs[t] = lastgaelam = delta + self.args.gamma * self.args.lam * nextnonterminal * lastgaelam
-            mb_returns = mb_advs + mb_values
-            batch_data = dict(batch_obs=mb_obs,
-                              batch_actions=mb_actions,
-                              batch_rewards=mb_rewards,
-                              batch_dones=mb_dones,
-                              batch_logps=mb_logps,
-                              batch_advs=mb_advs,
-                              batch_tdlambda_returns=mb_returns,
-                              batch_values=mb_values)
         with self.processing_timer:
-            self.learner.get_batch_data(batch_data)
-        ev = 1. - np.var(batch_data['batch_tdlambda_returns']-batch_data['batch_values'])/np.var(batch_data['batch_tdlambda_returns'])
-
-        print(ev)
+            data = self.learner.get_batch_data(batch_data)
+        ev = 1. - np.var(data['batch_tdlambda_returns']-data['batch_values'])/np.var(data['batch_tdlambda_returns'])
         self.epinfobuf.extend(epinfos)
         self.stats.update(explained_variance=ev,
                           eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),

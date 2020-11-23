@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OnPolicyWorker', OnPolicyWorker), ('TRPOWorker', TRPOWorker), ('PPOWorker', PPOWorker)])
-NAME2LEARNERCLS = dict([('PPO', None), ('TRPO', None)])
+NAME2LEARNERCLS = dict([('PPO', PPOLearner), ('TRPO', None)])
 NAME2BUFFERCLS = dict([('None', None),])
 NAME2OPTIMIZERCLS = dict([('AllReduce', AllReduceOptimizer),
                           ('TRPOOptimizer', TRPOOptimizer),
@@ -63,14 +63,14 @@ def built_PPO_parser():
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithValue')
-    parser.add_argument('--worker_type', type=str, default='PPOWorker')
+    parser.add_argument('--worker_type', type=str, default='OnPolicyWorker')
     parser.add_argument('--optimizer_type', type=str, default='SingleProcess')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='None')
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='Pendulum-v0')
+    parser.add_argument("--env_id", default='Ant-v2')
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
