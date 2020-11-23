@@ -144,7 +144,7 @@ class TRPOWorker(object):
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):
-            nextnonterminal = 1 - self.batch_data['batch_dones'][t + 1]
+            nextnonterminal = 1 - self.batch_data['batch_dones'][t]
             delta = batch_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
             batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
         batch_tdlambda_returns = batch_advs + batch_values
