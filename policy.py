@@ -10,9 +10,9 @@
 import tensorflow as tf
 from gym import spaces
 
-from model import MLPNet, MLPNetDSAC, PPONet
+from model import MLPNet, PPONet
 
-NAME2MODELCLS = dict([('MLP', MLPNet), ('DSAC', MLPNetDSAC), ('PPO', PPONet)])
+NAME2MODELCLS = dict([('MLP', MLPNet), ('PPO', PPONet)])
 
 
 class PolicyWithValue(tf.Module):

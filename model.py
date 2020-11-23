@@ -89,49 +89,6 @@ class PPONet(Model):
         return out
 
 
-class MLPNetDSAC(Model):
-    def __init__(self, input_dim, num_hidden_layers, num_hidden_units, hidden_activation, output_dim, **kwargs):
-        super(MLPNetDSAC, self).__init__(name=kwargs['name'])
-        self.first_ = Dense(num_hidden_units,
-                            activation=hidden_activation,
-                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
-                            dtype=tf.float32)
-        self.second_ = Dense(num_hidden_units,
-                             activation=hidden_activation,
-                             kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
-                             dtype=tf.float32)
-        self.hidden_mean = Sequential([Dense(num_hidden_units,
-                                             activation=hidden_activation,
-                                             kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
-                                             dtype=tf.float32) for _ in range(3)])
-        self.hidden_logstd = Sequential([Dense(num_hidden_units,
-                                               activation=hidden_activation,
-                                               kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
-                                               dtype=tf.float32) for _ in range(3)])
-        output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
-        self.mean = Dense(int(output_dim/2),
-                          activation=output_activation,
-                          kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
-                          bias_initializer=tf.keras.initializers.Constant(0.),
-                          dtype=tf.float32)
-        self.logstd = Dense(int(output_dim/2),
-                            activation=output_activation,
-                            kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
-                            bias_initializer=tf.keras.initializers.Constant(0.),
-                            dtype=tf.float32)
-
-        self.build(input_shape=(None, input_dim))
-
-    def call(self, x, **kwargs):
-        x = self.first_(x)
-        x = self.second_(x)
-        mean = self.hidden_mean(x)
-        mean = self.mean(mean)
-        logstd = self.hidden_logstd(x)
-        logstd = self.logstd(logstd)
-        return tf.concat([mean, logstd], axis=-1)
-
-
 
 def test_attrib():
     a = Variable(0, name='d')
