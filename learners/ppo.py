@@ -38,15 +38,14 @@ class PPOLearner(tf.Module):
         tmp = {'batch_obs': np.asarray(list(map(lambda x: x[0], batch_data)), dtype=np.float32),
                'batch_actions': np.asarray(list(map(lambda x: x[1], batch_data)), dtype=np.float32),
                'batch_rewards': np.asarray(list(map(lambda x: x[2], batch_data)), dtype=np.float32),
-               'batch_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
-               'batch_dones': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
-               'batch_logps': np.asarray(list(map(lambda x: x[5], batch_data)), dtype=np.float32),
+               'batch_dones': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
+               'batch_logps': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
                }
 
         return tmp
 
     def get_batch_data(self, batch_data):
-        self.batch_data = self.post_processing(batch_data)  # batch_data
+        self.batch_data = self.post_processing(batch_data)
         batch_advs, batch_tdlambda_returns, batch_values = self.compute_advantage()
         self.batch_data.update(dict(batch_advs=batch_advs,
                                     batch_tdlambda_returns=batch_tdlambda_returns,
@@ -58,7 +57,7 @@ class PPOLearner(tf.Module):
         batch_obs = self.batch_data['batch_obs']
         batch_rewards = self.batch_data['batch_rewards']
         batch_obs_tensor = self.tf.constant(batch_obs)
-        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()  # len = n_steps + 1
+        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):

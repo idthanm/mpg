@@ -57,10 +57,6 @@ class PolicyWithValue(tf.Module):
     def get_weights(self):
         return [model.get_weights() for model in self.models]
 
-    # @property
-    # def trainable_weights(self):
-    #     return self.tf.nest.flatten([model.trainable_weights for model in self.models])
-
     def set_weights(self, weights):
         for i, weight in enumerate(weights):
             self.models[i].set_weights(weight)
@@ -73,8 +69,7 @@ class PolicyWithValue(tf.Module):
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
 
     @tf.function
-    def apply_grads_all(self, grads, lr):
-        self.policy_optimizer.learning_rate = lr
+    def apply_grads_all(self, grads):
         self.policy_optimizer.apply_gradients(zip(grads, self.trainable_variables))
 
     def _logits2dist(self, logits):

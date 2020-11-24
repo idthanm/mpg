@@ -48,6 +48,7 @@ class TRPOWorker(object):
         self.g_grad_timer = TimerStat()
         self.v_grad_timer = TimerStat()
         self.sampling_timer = TimerStat()
+        self.processing_timer = TimerStat()
         self.epinfobuf = deque(maxlen=100)
         self.permutation = None
         self.policy_shapes = [var.get_shape().as_list() for var in self.policy_with_value.policy.trainable_weights]
@@ -62,9 +63,8 @@ class TRPOWorker(object):
         tmp = {'batch_obs': np.asarray(list(map(lambda x: x[0], batch_data)), dtype=np.float32),
                'batch_actions': np.asarray(list(map(lambda x: x[1], batch_data)), dtype=np.float32),
                'batch_rewards': np.asarray(list(map(lambda x: x[2], batch_data)), dtype=np.float32),
-               'batch_obs_tp1': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
-               'batch_dones': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
-               'batch_logps': np.asarray(list(map(lambda x: x[5], batch_data)), dtype=np.float32),
+               'batch_dones': np.asarray(list(map(lambda x: x[3], batch_data)), dtype=np.float32),
+               'batch_logps': np.asarray(list(map(lambda x: x[4], batch_data)), dtype=np.float32),
                }
 
         return tmp
@@ -77,9 +77,7 @@ class TRPOWorker(object):
                                     batch_values=batch_values))
 
         self.old_policy_with_value.set_weights(self.policy_with_value.get_weights())
-
-    def batch_data_count(self):
-        return len(self.batch_data['batch_obs'])
+        return self.batch_data
 
     def get_weights(self):
         return self.policy_with_value.get_weights()
@@ -112,26 +110,32 @@ class TRPOWorker(object):
 
     def sample_and_process(self):
         with self.sampling_timer:
-            batch_data = []
             epinfos = []
+            batch_data = []
             for _ in range(self.sample_batch_size):
                 processed_obs = self.preprocessor.process_obs(self.obs)
-                processed_obs_tensor = self.tf.convert_to_tensor(processed_obs[np.newaxis, :])
+                processed_obs_tensor = self.tf.constant(processed_obs[np.newaxis, :])
                 action, logp = self.policy_with_value.compute_action(processed_obs_tensor)
                 action, logp = action.numpy()[0], logp.numpy()[0]
+
                 obs_tp1, reward, self.done, info = self.env.step(action)
                 processed_rew = self.preprocessor.process_rew(reward, self.done)
-
-                batch_data.append((processed_obs.copy(), action, processed_rew, obs_tp1, self.done, logp))
                 self.obs = self.env.reset() if self.done else obs_tp1.copy()
                 maybeepinfo = info.get('episode')
                 if maybeepinfo:
                     epinfos.append(maybeepinfo)
-        self.get_batch_data(batch_data)
+
+                batch_data.append((processed_obs.copy(), action, processed_rew, self.done, logp))
+
+        with self.processing_timer:
+            data = self.get_batch_data(batch_data)
+        ev = 1. - np.var(data['batch_tdlambda_returns']-data['batch_values'])/np.var(data['batch_tdlambda_returns'])
         self.epinfobuf.extend(epinfos)
-        self.stats.update(eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
+        self.stats.update(explained_variance=ev,
+                          eprewmean=safemean([epinfo['r'] for epinfo in self.epinfobuf]),
                           eplenmean=safemean([epinfo['l'] for epinfo in self.epinfobuf]))
-        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean))
+        self.stats.update(dict(worker_sampling_time=self.sampling_timer.mean,
+                               worker_processing_time=self.processing_timer.mean))
         if self.args.reward_preprocess_type == 'normalize':
             self.stats.update(dict(ret_rms_var=self.preprocessor.ret_rms.var,
                                    ret_rms_mean=self.preprocessor.ret_rms.mean))
@@ -140,14 +144,16 @@ class TRPOWorker(object):
         n_steps = len(self.batch_data['batch_rewards'])
         batch_obs = self.batch_data['batch_obs']
         batch_rewards = self.batch_data['batch_rewards']
-        batch_values = self.policy_with_value.value(batch_obs).numpy()[:, 0]  # len = n_steps + 1
+        batch_obs_tensor = self.tf.constant(batch_obs)
+        batch_values = self.policy_with_value.compute_vf(batch_obs_tensor).numpy()
         batch_advs = np.zeros_like(self.batch_data['batch_rewards'])
         lastgaelam = 0
         for t in reversed(range(n_steps - 1)):
-            nextnonterminal = 1 - self.batch_data['batch_dones'][t]
+            nextnonterminal = 1. - self.batch_data['batch_dones'][t]
             delta = batch_rewards[t] + self.args.gamma * batch_values[t + 1] * nextnonterminal - batch_values[t]
             batch_advs[t] = lastgaelam = delta + self.args.lam * self.args.gamma * nextnonterminal * lastgaelam
         batch_tdlambda_returns = batch_advs + batch_values
+
         return batch_advs, batch_tdlambda_returns, batch_values
 
     @tf.function
@@ -225,7 +231,7 @@ class TRPOWorker(object):
 
     def value_gradient_for_ith_mb(self, i):
         if i == 0:
-            self.permutation = np.arange(self.batch_data_count())
+            self.permutation = np.arange(len(self.batch_data['batch_obs']))
             np.random.shuffle(self.permutation)
         start_idx, end_idx = i * self.args.mini_batch_size, (i + 1) * self.args.mini_batch_size
         mbinds = self.permutation[start_idx:end_idx]

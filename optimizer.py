@@ -59,14 +59,13 @@ class SingleProcessOptimizer(object):
             with self.sampling_timer:
                 self.worker.sample_and_process()
             all_stats = []
-            lrnow = 3e-4*(1.-self.iteration/488)
             with self.learning_timer:
                 for i in range(self.args.epoch):
                     for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                         mb_grads = self.worker.compute_gradient_over_ith_minibatch(mb_index)
                         worker_stats = self.worker.get_stats()
-                        self.worker.apply_grads_all(mb_grads, lrnow)
-                        all_stats.append(worker_stats)
+                        self.worker.apply_grads_all(mb_grads)
+                        all_stats.append(worker_stats.copy())
 
         all_reduced_stats = {}
         for key in all_stats[0].keys():
@@ -145,7 +144,7 @@ class AllReduceOptimizer(object):
                     self.local_worker.apply_grads_all(final_grads)
                     self.sync_remote_workers()
                     for worker_index in range(self.args.num_workers):
-                        all_stats[worker_index].append(worker_stats[worker_index])
+                        all_stats[worker_index].append(worker_stats[worker_index].copy())
 
         # deal with stats
         reduced_stats_for_all_workers = []
@@ -311,7 +310,7 @@ class SingleProcessTRPOOptimizer(object):
                 for i in range(self.args.v_iter):
                     for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                         v_mb_grads = self.worker.value_gradient_for_ith_mb(mb_index)
-                        all_stats.append(self.worker.get_stats())
+                        all_stats.append(self.worker.get_stats().copy())
                         self.worker.apply_v_gradients(v_mb_grads)
 
         all_reduced_stats = {}
@@ -484,7 +483,7 @@ class TRPOOptimizer(object):
                         v_final_grads = np.array(v_mb_grads).mean(axis=0).tolist()
                         worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
                         for worker_index in range(self.args.num_workers):
-                            all_stats[worker_index].append(worker_stats[worker_index])
+                            all_stats[worker_index].append(worker_stats[worker_index].copy())
                         self.local_worker.apply_v_gradients(v_final_grads)
                         self.sync_remote_workers()
 

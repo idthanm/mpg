@@ -22,14 +22,14 @@ from optimizer import AllReduceOptimizer, TRPOOptimizer, SingleProcessOptimizer,
 from policy import PolicyWithValue
 from tester import Tester
 from trainer import Trainer
-from worker import OnPolicyWorker, PPOWorker
+from worker import OnPolicyWorker
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-NAME2WORKERCLS = dict([('OnPolicyWorker', OnPolicyWorker), ('TRPOWorker', TRPOWorker), ('PPOWorker', PPOWorker)])
+NAME2WORKERCLS = dict([('OnPolicyWorker', OnPolicyWorker), ('TRPOWorker', TRPOWorker)])
 NAME2LEARNERCLS = dict([('PPO', PPOLearner), ('TRPO', None)])
 NAME2BUFFERCLS = dict([('None', None),])
 NAME2OPTIMIZERCLS = dict([('AllReduce', AllReduceOptimizer),
@@ -70,7 +70,7 @@ def built_PPO_parser():
     parser.add_argument('--off_policy', type=str, default=False)
 
     # env
-    parser.add_argument("--env_id", default='Ant-v2')
+    parser.add_argument("--env_id", default='Pendulum-v0')
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
