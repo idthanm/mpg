@@ -371,7 +371,7 @@ class PPOWorker(object):
         grad, grad_norm, pg_loss, ent_bonus, policy_entropy, clipfrac, v_loss, value_mean, approxkl = \
             self.get_grads(mb_obs, mb_actions, mb_logps, mb_advs, mb_tdlambda_returns, mb_oldvs)
 
-        self.stats.update(dict(
+        self.stats=dict(
             v_loss=v_loss.numpy(),
             policy_loss=pg_loss.numpy(),
             ent_bonus=ent_bonus.numpy(),
@@ -381,7 +381,7 @@ class PPOWorker(object):
             grad_norm=grad_norm.numpy(),
             clipfrac=clipfrac.numpy(),
             approxkl=approxkl.numpy()
-        ))
+        )
 
         return grad
 

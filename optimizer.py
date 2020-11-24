@@ -64,7 +64,7 @@ class SingleProcessOptimizer(object):
                         mb_grads = self.worker.compute_gradient_over_ith_minibatch(mb_index)
                         worker_stats = self.worker.get_stats()
                         self.worker.apply_grads_all(mb_grads, lrnow)
-                        all_stats.append(worker_stats)
+                        all_stats.append(worker_stats.copy())
 
         all_reduced_stats = {}
         for key in all_stats[0].keys():
