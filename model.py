@@ -15,41 +15,22 @@ import numpy as np
 
 tf.config.experimental.set_visible_devices([], 'GPU')
 
-def ortho_init(scale=1.0):
-    def _ortho_init(shape, dtype, partition_info=None):
-        #lasagne ortho init for tf
-        shape = tuple(shape)
-        if len(shape) == 2:
-            flat_shape = shape
-        elif len(shape) == 4: # assumes NHWC
-            flat_shape = (np.prod(shape[:-1]), shape[-1])
-        else:
-            raise NotImplementedError
-        a = np.random.normal(0.0, 1.0, flat_shape)
-        u, _, v = np.linalg.svd(a, full_matrices=False)
-        q = u if u.shape == flat_shape else v # pick the one with the correct shape
-        q = q.reshape(shape)
-        return (scale * q[:shape[0], :shape[1]]).astype(np.float32)
-    return _ortho_init
-
 
 class MLPNet(Model):
     def __init__(self, input_dim, num_hidden_layers, num_hidden_units, hidden_activation, output_dim, **kwargs):
         super(MLPNet, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
                             activation=hidden_activation,
-                            kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
-                            # bias_initializer=tf.keras.initializers.Constant(0.),
+                            kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                             dtype=tf.float32)
         self.hidden = Sequential([Dense(num_hidden_units,
                                         activation=hidden_activation,
-                                        kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
-                                        # bias_initializer=tf.keras.initializers.Constant(0.),
+                                        kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                                         dtype=tf.float32) for _ in range(num_hidden_layers-1)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.outputs = Dense(output_dim,
                              activation=output_activation,
-                             kernel_initializer=ortho_init(1.),  # tf.keras.initializers.Orthogonal(1.414),
+                             kernel_initializer=tf.keras.initializers.Orthogonal(1.),
                              bias_initializer=tf.keras.initializers.Constant(0.),
                              dtype=tf.float32)
         self.build(input_shape=(None, input_dim))
@@ -66,16 +47,16 @@ class PPONet(Model):
         super(PPONet, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
                             activation=hidden_activation,
-                            kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
+                            kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                             dtype=tf.float32)
         self.sec_ = Dense(num_hidden_units,
                           activation=hidden_activation,
-                          kernel_initializer=ortho_init(np.sqrt(2.)),  # tf.keras.initializers.Orthogonal(1.414),
+                          kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                           dtype=tf.float32)
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
                           activation=output_activation,
-                          kernel_initializer=ortho_init(0.01),  # tf.keras.initializers.Orthogonal(1.414),
+                          kernel_initializer=tf.keras.initializers.Orthogonal(0.01),
                           bias_initializer=tf.keras.initializers.Constant(0.),
                           dtype=tf.float32)
         self.logstd = tf.Variable(initial_value=tf.zeros((1, int(output_dim/2))), name='pi/logstd', dtype=tf.float32)
@@ -94,19 +75,19 @@ class MLPNetDSAC(Model):
         super(MLPNetDSAC, self).__init__(name=kwargs['name'])
         self.first_ = Dense(num_hidden_units,
                             activation=hidden_activation,
-                            kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                            kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                             dtype=tf.float32)
         self.second_ = Dense(num_hidden_units,
                              activation=hidden_activation,
-                             kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                             kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                              dtype=tf.float32)
         self.hidden_mean = Sequential([Dense(num_hidden_units,
                                              activation=hidden_activation,
-                                             kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                                             kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                                              dtype=tf.float32) for _ in range(3)])
         self.hidden_logstd = Sequential([Dense(num_hidden_units,
                                                activation=hidden_activation,
-                                               kernel_initializer=tf.keras.initializers.Orthogonal(1.414),
+                                               kernel_initializer=tf.keras.initializers.Orthogonal(np.sqrt(2.)),
                                                dtype=tf.float32) for _ in range(3)])
         output_activation = kwargs['output_activation'] if kwargs.get('output_activation') else 'linear'
         self.mean = Dense(int(output_dim/2),
@@ -130,7 +111,6 @@ class MLPNetDSAC(Model):
         logstd = self.hidden_logstd(x)
         logstd = self.logstd(logstd)
         return tf.concat([mean, logstd], axis=-1)
-
 
 
 def test_attrib():
