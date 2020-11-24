@@ -289,19 +289,18 @@ def built_PPO_parser_for_DSAC():
     parser.add_argument("--max_step", type=int, default=1000)
     parser.add_argument("--eval_render", type=bool, default=False)
 
-    # policy and model
-    parser.add_argument("--value_model_cls", type=str, default='MLP')
-    parser.add_argument("--policy_model_cls", type=str, default='DSAC')
-
     max_inner_iter = 500000 if env_id == 'InvertedDoublePendulum-v2' else 3000000
     epoch = parser.parse_args().epoch
     batch_size = parser.parse_args().sample_batch_size
     mb_size = parser.parse_args().mini_batch_size
-    inner_iter_per_iter = epoch * int(batch_size/mb_size)
+    inner_iter_per_iter = epoch * int(batch_size / mb_size)
     max_iter = int(max_inner_iter / inner_iter_per_iter)
     eval_num = 750
-    eval_interval = save_interval = int(int(max_inner_iter/eval_num)/inner_iter_per_iter)
+    eval_interval = save_interval = int(int(max_inner_iter / eval_num) / inner_iter_per_iter)
 
+    # policy and model
+    parser.add_argument("--value_model_cls", type=str, default='MLP')
+    parser.add_argument("--policy_model_cls", type=str, default='DSAC')
     parser.add_argument("--policy_lr_schedule", type=list, default=[5e-5, max_inner_iter, 1e-6])
     parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, max_inner_iter, 1e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=5)
