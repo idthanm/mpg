@@ -14,12 +14,10 @@ import gym
 import numpy as np
 
 from preprocessor import Preprocessor
-from utils.misc import TimerStat
+from utils.misc import TimerStat, args2envkwargs
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-# logger.setLevel(logging.INFO)
 
 
 class Evaluator(object):
@@ -29,9 +27,7 @@ class Evaluator(object):
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
-        self.env = gym.make(env_id,
-                            training_task=self.args.training_task,
-                            num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id, **args2envkwargs(args))
         self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
         self.iteration = 0
         if self.args.mode == 'training':
@@ -42,7 +38,7 @@ class Evaluator(object):
             os.makedirs(self.log_dir)
 
         self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)
@@ -104,7 +100,7 @@ class Evaluator(object):
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))
             info_dict = self.run_an_episode(self.args.fixed_steps, self.args.eval_render)
-            list_of_info_dict.append(info_dict)
+            list_of_info_dict.append(info_dict.copy())
         n_info_dict = dict()
         for key in list_of_info_dict[0].keys():
             info_key = list(map(lambda x: x[key], list_of_info_dict))

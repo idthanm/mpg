@@ -16,26 +16,28 @@ import os
 import ray
 
 from buffer import PrioritizedReplayBuffer, ReplayBuffer
+from evaluator import Evaluator
 from learners.ampc import AMPCLearner
-from optimizer import OffPolicyAsyncOptimizer
+from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
 from policy import PolicyWithQs
 from tester import Tester
 from trainer import Trainer
+from worker import OffPolicyWorker
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 logging.basicConfig(level=logging.INFO)
-
-# logging.getLogger().setLevel(logging.INFO)
 
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-
+NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
 NAME2LEARNERCLS = dict([('AMPC', AMPCLearner)])
 NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('priority', PrioritizedReplayBuffer), ('None', None)])
-NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer)])
+NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
+                          ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
+NAME2POLICIES = dict([('PolicyWithQs', PolicyWithQs)])
+NAME2EVALUATORS = dict([('Evaluator', Evaluator)])
 
-def built_ampc_parser():
+def built_AMPC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
@@ -58,28 +60,30 @@ def built_ampc_parser():
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
+    parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
+    parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsync')
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument("--env_id", default='CrossroadEnd2end-v0')
-    parser.add_argument('--num_future_data', type=int, default=0)
-    parser.add_argument('--training_task', type=str, default='left')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v0')
+    parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
+    parser.add_argument('--env_kwargs_training_task', type=str, default='left')
 
     # learner
-    parser.add_argument("--alg_name", default='AMPC')
+    parser.add_argument('--alg_name', default='AMPC')
     parser.add_argument('--M', type=int, default=1)
     parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[15])
-    parser.add_argument("--gamma", type=float, default=1.)
-    parser.add_argument("--gradient_clip_norm", type=float, default=10)
-    parser.add_argument("--init_punish_factor", type=float, default=10.)
-    parser.add_argument("--pf_enlarge_interval", type=int, default=10000)
-    parser.add_argument("--pf_amplifier", type=float, default=1.)
+    parser.add_argument('--gamma', type=float, default=1.)
+    parser.add_argument('--gradient_clip_norm', type=float, default=10)
+    parser.add_argument('--init_punish_factor', type=float, default=10.)
+    parser.add_argument('--pf_enlarge_interval', type=int, default=10000)
+    parser.add_argument('--pf_amplifier', type=float, default=1.)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
-    parser.add_argument("--worker_log_interval", type=int, default=5)
+    parser.add_argument('--worker_log_interval', type=int, default=5)
     parser.add_argument('--explore_sigma', type=float, default=None)
 
     # buffer
@@ -88,68 +92,73 @@ def built_ampc_parser():
     parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
-    parser.add_argument("--buffer_log_interval", type=int, default=40000)
+    parser.add_argument('--buffer_log_interval', type=int, default=40000)
 
     # tester and evaluator
-    parser.add_argument("--num_eval_episode", type=int, default=2)
-    parser.add_argument("--eval_log_interval", type=int, default=1)
-    parser.add_argument("--fixed_steps", type=int, default=50)
-    parser.add_argument("--eval_render", type=bool, default=True)
+    parser.add_argument('--num_eval_episode', type=int, default=2)
+    parser.add_argument('--eval_log_interval', type=int, default=1)
+    parser.add_argument('--fixed_steps', type=int, default=50)
+    parser.add_argument('--eval_render', type=bool, default=True)
 
     # policy and model
-    parser.add_argument("--policy_only", default=True, action='store_true')
-    parser.add_argument("--policy_lr_schedule", type=list, default=[3e-5, 150000, 3e-6])
-    parser.add_argument("--value_lr_schedule", type=list, default=[8e-5, 150000, 8e-6])
+    parser.add_argument('--value_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_model_cls', type=str, default='MLP')
+    parser.add_argument('--policy_only', default=True, action='store_true')
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 150000, 3e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 150000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
-    parser.add_argument("--deterministic_policy", default=True, action='store_true')
-    parser.add_argument("--policy_out_activation", type=str, default='tanh')
+    parser.add_argument('--hidden_activation', type=str, default='elu')
+    parser.add_argument('--deterministic_policy', default=True, action='store_true')
+    parser.add_argument('--policy_out_activation', type=str, default='tanh')
+    parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
-    parser.add_argument("--obs_preprocess_type", type=str, default='scale')
-    num_future_data = parser.parse_args().num_future_data
-    training_task = parser.parse_args().training_task
+    parser.add_argument('--obs_preprocess_type', type=str, default='scale')
+    num_future_data = parser.parse_args().env_kwargs_num_future_data
+    training_task = parser.parse_args().env_kwargs_training_task
     # TASK2VEHNUM = {'left': 6, 'straight': 7, 'right': 5}
     # obs_scale_factor = [0.2, 1., 2., 1/20., 1/20, 1/180.] + \
     #                    [1., 1/15., 0.2] * (1 + num_future_data) + \
     #                    [1/20., 1/20., 0.2, 1/180.] * TASK2VEHNUM[training_task]
     TASK2VEHNUM = {'left': 10, 'straight': 8, 'right': 5}
-    obs_scale_factor = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
+    obs_scale = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
                        [1., 1 / 15., 0.2] * (1 + num_future_data) + \
                        [1 / 30., 1 / 30., 0.2, 1 / 180.] * TASK2VEHNUM[training_task]
-    parser.add_argument("--obs_scale_factor", type=list, default=obs_scale_factor)
-    parser.add_argument("--reward_preprocess_type", type=str, default='scale')
-    parser.add_argument("--reward_scale_factor", type=float, default=1.)
+    parser.add_argument('--obs_scale', type=list, default=obs_scale)
+    parser.add_argument('--reward_preprocess_type', type=str, default='scale')
+    parser.add_argument('--reward_scale', type=float, default=1.)
+    parser.add_argument('--reward_shift', type=float, default=0.)
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_updated_steps', type=int, default=150000)
+    parser.add_argument('--max_iter', type=int, default=150000)
     parser.add_argument('--num_workers', type=int, default=1)
     parser.add_argument('--num_learners', type=int, default=5)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument("--eval_interval", type=int, default=5000)
-    parser.add_argument("--save_interval", type=int, default=5000)
-    parser.add_argument("--log_interval", type=int, default=100)
+    parser.add_argument('--eval_interval', type=int, default=5000)
+    parser.add_argument('--save_interval', type=int, default=5000)
+    parser.add_argument('--log_interval', type=int, default=100)
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     results_dir = './results/toyota/experiment-{time}'.format(time=time_now)
-    parser.add_argument("--result_dir", type=str, default=results_dir)
-    parser.add_argument("--log_dir", type=str, default=results_dir + '/logs')
-    parser.add_argument("--model_dir", type=str, default=results_dir + '/models')
-    parser.add_argument("--model_load_dir", type=str, default=None)
-    parser.add_argument("--model_load_ite", type=int, default=None)
-    parser.add_argument("--ppc_load_dir", type=str, default=None)
+    parser.add_argument('--result_dir', type=str, default=results_dir)
+    parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
+    parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
+    parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
 
 def built_parser(alg_name):
     if alg_name == 'AMPC':
-        return built_ampc_parser()
+        return built_AMPC_parser()
 
 def main(alg_name):
     args = built_parser(alg_name)
@@ -159,10 +168,12 @@ def main(alg_name):
         os.makedirs(args.result_dir)
         with open(args.result_dir + '/config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
-        trainer = Trainer(policy_cls=PolicyWithQs,
+        trainer = Trainer(policy_cls=NAME2POLICIES[args.policy_type],
+                          worker_cls=NAME2WORKERCLS[args.worker_type],
                           learner_cls=NAME2LEARNERCLS[args.alg_name],
                           buffer_cls=NAME2BUFFERCLS[args.buffer_type],
                           optimizer_cls=NAME2OPTIMIZERCLS[args.optimizer_type],
+                          evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
                           args=args)
         if args.model_load_dir is not None:
             logger.info('loading model')
@@ -176,7 +187,8 @@ def main(alg_name):
         os.makedirs(args.test_log_dir)
         with open(args.test_log_dir + '/test_config.json', 'w', encoding='utf-8') as f:
             json.dump(vars(args), f, ensure_ascii=False, indent=4)
-        tester = Tester(policy_cls=PolicyWithQs,
+        tester = Tester(policy_cls=NAME2POLICIES[args.policy_type],
+                        evaluator_cls=NAME2EVALUATORS[args.evaluator_type],
                         args=args)
         tester.test()
 

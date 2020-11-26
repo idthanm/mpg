@@ -13,6 +13,14 @@ import time
 import numpy as np
 
 
+def args2envkwargs(args):
+    env_kwargs = {}
+    for key, val in vars(args).items():
+        if key.startswith('env_kwargs'):
+            env_kwargs.update({key[11:]: val})
+    return env_kwargs
+
+
 def safemean(xs):
     return np.nan if len(xs) == 0 else np.mean(xs)
 

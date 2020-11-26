@@ -13,7 +13,7 @@ import gym
 import numpy as np
 
 from preprocessor import Preprocessor
-from utils.misc import judge_is_nan
+from utils.misc import judge_is_nan, args2envkwargs
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -22,22 +22,22 @@ logging.basicConfig(level=logging.INFO)
 
 
 class OffPolicyWorker(object):
+    import tensorflow as tf
+    tf.config.experimental.set_visible_devices([], 'GPU')
     """just for sample"""
 
     def __init__(self, policy_cls, env_id, args, worker_id):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.worker_id = worker_id
         self.args = args
-        self.env = gym.make(env_id,
-                            training_task=self.args.training_task,
-                            num_future_data=self.args.num_future_data)
+        self.env = gym.make(env_id, **args2envkwargs(args))
         obs_space, act_space = self.env.observation_space, self.env.action_space
         self.policy_with_value = policy_cls(obs_space, act_space, self.args)
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale_factor, self.args.reward_scale_factor,
+                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
         self.explore_sigma = self.args.explore_sigma
@@ -69,7 +69,7 @@ class OffPolicyWorker(object):
 
     def apply_gradients(self, iteration, grads):
         self.iteration = iteration
-        self.policy_with_value.apply_gradients(iteration, grads)
+        self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -102,8 +102,8 @@ class OffPolicyWorker(object):
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            batch_data.append((self.obs, action[0].numpy(), reward, obs_tp1, self.done))
-            self.obs = self.env.reset() if self.done else obs_tp1
+            batch_data.append((self.obs.copy(), action[0].numpy(), reward, obs_tp1.copy(), self.done))
+            self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 
         if self.worker_id == 1 and self.sample_times % self.args.worker_log_interval == 0:
