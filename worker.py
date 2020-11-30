@@ -99,9 +99,9 @@ class OffPolicyWorker(object):
                 action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
                 judge_is_nan([action])
                 raise ValueError
-            obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
+            obs_tp1, reward, self.done, info = self.env.step(action.numpy()[0])
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            batch_data.append((self.obs.copy(), action[0].numpy(), reward, obs_tp1.copy(), self.done, info['ref_index']))
+            batch_data.append((self.obs.copy(), action.numpy()[0], reward, obs_tp1.copy(), self.done, info['ref_index']))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 

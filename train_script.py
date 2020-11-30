@@ -138,7 +138,7 @@ def built_AMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=150000)
     parser.add_argument('--num_workers', type=int, default=1)
-    parser.add_argument('--num_learners', type=int, default=5)
+    parser.add_argument('--num_learners', type=int, default=8)
     parser.add_argument('--num_buffers', type=int, default=1)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
@@ -148,7 +148,7 @@ def built_AMPC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/toyota/experiment-{time}'.format(time=time_now)
+    results_dir = './results/toyota3lane/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
