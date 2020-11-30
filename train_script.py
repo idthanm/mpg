@@ -12,17 +12,19 @@ import datetime
 import json
 import logging
 import os
+import gym
 
 import ray
 
-from buffer import PrioritizedReplayBuffer, ReplayBuffer
+from buffer import ReplayBuffer
 from evaluator import Evaluator
 from learners.ampc import AMPCLearner
 from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer
-from policy import PolicyWithQs
+from policy import Policy4Toyota
 from tester import Tester
 from trainer import Trainer
 from worker import OffPolicyWorker
+from utils.misc import TimerStat, args2envkwargs
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -31,11 +33,11 @@ logging.basicConfig(level=logging.INFO)
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker)])
 NAME2LEARNERCLS = dict([('AMPC', AMPCLearner)])
-NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('priority', PrioritizedReplayBuffer), ('None', None)])
+NAME2BUFFERCLS = dict([('normal', ReplayBuffer), ('None', None)])
 NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
-NAME2POLICIES = dict([('PolicyWithQs', PolicyWithQs)])
-NAME2EVALUATORS = dict([('Evaluator', Evaluator)])
+NAME2POLICIES = dict([('Policy4Toyota', Policy4Toyota)])
+NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
@@ -59,7 +61,7 @@ def built_AMPC_parser():
         return parser.parse_args()
 
     # trainer
-    parser.add_argument('--policy_type', type=str, default='PolicyWithQs')
+    parser.add_argument('--policy_type', type=str, default='Policy4Toyota')
     parser.add_argument('--worker_type', type=str, default='OffPolicyWorker')
     parser.add_argument('--evaluator_type', type=str, default='Evaluator')
     parser.add_argument('--buffer_type', type=str, default='normal')
@@ -70,11 +72,13 @@ def built_AMPC_parser():
     parser.add_argument('--env_id', default='CrossroadEnd2end-v0')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
+    parser.add_argument('--obs_dim', default=None)
+    parser.add_argument('--act_dim', default=None)
 
     # learner
     parser.add_argument('--alg_name', default='AMPC')
     parser.add_argument('--M', type=int, default=1)
-    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[15])
+    parser.add_argument('--num_rollout_list_for_policy_update', type=list, default=[25])
     parser.add_argument('--gamma', type=float, default=1.)
     parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--init_punish_factor', type=float, default=10.)
@@ -103,7 +107,6 @@ def built_AMPC_parser():
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_only', default=True, action='store_true')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 150000, 3e-6])
     parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 150000, 8e-6])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
@@ -114,8 +117,6 @@ def built_AMPC_parser():
     parser.add_argument('--action_range', type=float, default=None)
 
     # preprocessor
-    parser.add_argument('--obs_dim', default=None)
-    parser.add_argument('--act_dim', default=None)
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
     num_future_data = parser.parse_args().env_kwargs_num_future_data
     training_task = parser.parse_args().env_kwargs_training_task
@@ -125,7 +126,8 @@ def built_AMPC_parser():
     #                    [1/20., 1/20., 0.2, 1/180.] * TASK2VEHNUM[training_task]
     TASK2VEHNUM = {'left': 10, 'straight': 8, 'right': 5}
     obs_scale = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
-                       [1., 1 / 15., 0.2] * (1 + num_future_data) + \
+                       [1., 1 / 15., 0.2] + \
+                       [1., 1., 1 / 15.] * num_future_data + \
                        [1 / 30., 1 / 30., 0.2, 1 / 180.] * TASK2VEHNUM[training_task]
     parser.add_argument('--obs_scale', type=list, default=obs_scale)
     parser.add_argument('--reward_preprocess_type', type=str, default='scale')
@@ -158,7 +160,11 @@ def built_AMPC_parser():
 
 def built_parser(alg_name):
     if alg_name == 'AMPC':
-        return built_AMPC_parser()
+        args = built_AMPC_parser()
+        env = gym.make(args.env_id, **args2envkwargs(args))
+        obs_space, act_space = env.observation_space, env.action_space
+        args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
+        return args
 
 def main(alg_name):
     args = built_parser(alg_name)

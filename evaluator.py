@@ -28,7 +28,7 @@ class Evaluator(object):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
         self.args = args
         self.env = gym.make(env_id, **args2envkwargs(args))
-        self.policy_with_value = policy_cls(self.env.observation_space, self.env.action_space, self.args)
+        self.policy_with_value = policy_cls(self.args)
         self.iteration = 0
         if self.args.mode == 'training':
             self.log_dir = self.args.log_dir + '/evaluator'
@@ -37,7 +37,7 @@ class Evaluator(object):
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
 
-        self.preprocessor = Preprocessor(self.env.observation_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+        self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
@@ -70,7 +70,7 @@ class Evaluator(object):
             for _ in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs[np.newaxis, :])
-                obs, reward, done, info = self.env.step(action[0].numpy())
+                obs, reward, done, info = self.env.step(action.numpy()[0])
                 reward_info_dict_list.append(info['reward_info'])
                 if render: self.env.render()
                 reward_list.append(reward)
@@ -78,7 +78,7 @@ class Evaluator(object):
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs[np.newaxis, :])
-                obs, reward, done, info = self.env.step(action[0].numpy())
+                obs, reward, done, info = self.env.step(action.numpy()[0])
                 reward_info_dict_list.append(info['reward_info'])
                 if render: self.env.render()
                 reward_list.append(reward)
@@ -139,11 +139,18 @@ def test_trained_model(model_dir, ppc_params_dir, iteration):
     return evaluator.metrics(1000, render=False, reset=False)
 
 def test_evaluator():
-    from train_script import built_offpolicy_mb_parser
-    from policy import PolicyWithQs
-    args = built_offpolicy_mb_parser()
-    evaluator = Evaluator(PolicyWithQs, args.env_id, args)
-    evaluator.run_evaluation(3)
+    import ray
+    ray.init()
+    import time
+    from train_script import built_parser
+    from policy import Policy4Toyota
+    args = built_parser('AMPC')
+    # evaluator = Evaluator(Policy4Toyota, args.env_id, args)
+    # evaluator.run_evaluation(3)
+    evaluator = ray.remote(num_cpus=1)(Evaluator).remote(Policy4Toyota, args.env_id, args)
+    evaluator.run_evaluation.remote(3)
+    time.sleep(10000)
+
 
 if __name__ == '__main__':
     test_evaluator()

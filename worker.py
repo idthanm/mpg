@@ -31,12 +31,11 @@ class OffPolicyWorker(object):
         self.worker_id = worker_id
         self.args = args
         self.env = gym.make(env_id, **args2envkwargs(args))
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.policy_with_value = policy_cls(self.args)
         self.batch_size = self.args.batch_size
         self.obs = self.env.reset()
         self.done = False
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+        self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
 
@@ -102,7 +101,7 @@ class OffPolicyWorker(object):
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action[0].numpy())
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            batch_data.append((self.obs.copy(), action[0].numpy(), reward, obs_tp1.copy(), self.done))
+            batch_data.append((self.obs.copy(), action[0].numpy(), reward, obs_tp1.copy(), self.done, info['ref_index']))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 

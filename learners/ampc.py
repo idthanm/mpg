@@ -25,20 +25,17 @@ class AMPCLearner(object):
 
     def __init__(self, policy_cls, args):
         self.args = args
-        self.env = gym.make(self.args.env_id, **args2envkwargs(args))
-        obs_space, act_space = self.env.observation_space, self.env.action_space
-        self.env.close()
-        self.policy_with_value = policy_cls(obs_space, act_space, self.args)
+        self.policy_with_value = policy_cls(self.args)
         self.batch_data = {}
         self.all_data = {}
         self.M = self.args.M
         self.num_rollout_list_for_policy_update = self.args.num_rollout_list_for_policy_update
 
         self.model = EnvironmentModel(**args2envkwargs(args))
-        self.preprocessor = Preprocessor(obs_space, self.args.obs_preprocess_type, self.args.reward_preprocess_type,
+        self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
                                          self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
                                          gamma=self.args.gamma)
-        self.policy_gradient_timer = TimerStat()
+        self.grad_timer = TimerStat()
         self.stats = {}
         self.info_for_buffer = {}
 
@@ -54,12 +51,8 @@ class AMPCLearner(object):
                            'batch_rewards': batch_data[2].astype(np.float32),
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32),
+                           'batch_ref_index': batch_data[5].astype(np.int32)
                            }
-
-        # print(self.batch_data['batch_obs'].shape)  # batch_size * obs_dim
-        # print(self.batch_data['batch_actions'].shape)  # batch_size * act_dim
-        # print(self.batch_data['batch_advs'].shape)  # batch_size,
-        # print(self.batch_data['batch_tdlambda_returns'].shape)  # batch_size,
 
     def get_weights(self):
         return self.policy_with_value.get_weights()
@@ -77,9 +70,9 @@ class AMPCLearner(object):
         pf = init_pf * self.tf.pow(amplifier, self.tf.cast(ite//interval, self.tf.float32))
         return pf
 
-    def model_rollout_for_policy_update(self, start_obses, ite):
+    def model_rollout_for_update(self, start_obses, ite, mb_ref_index):
         start_obses = self.tf.tile(start_obses, [self.M, 1])
-        self.model.reset(start_obses, self.args.env_kwargs_training_task)
+        self.model.reset(start_obses, mb_ref_index)
         rewards_sum = self.tf.zeros((start_obses.shape[0],))
         punish_terms_for_training_sum = self.tf.zeros((start_obses.shape[0],))
         real_punish_terms_sum = self.tf.zeros((start_obses.shape[0],))
@@ -87,6 +80,8 @@ class AMPCLearner(object):
         veh2road4real_sum = self.tf.zeros((start_obses.shape[0],))
         obses = start_obses
         pf = self.punish_factor_schedule(ite)
+        processed_obses = self.preprocessor.tf_process_obses(obses)
+        vs_pred = self.policy_with_value.compute_vs(processed_obses)
 
         for _ in range(self.num_rollout_list_for_policy_update[0]):
             processed_obses = self.preprocessor.tf_process_obses(obses)
@@ -98,29 +93,43 @@ class AMPCLearner(object):
             veh2veh4real_sum += veh2veh4real
             veh2road4real_sum += veh2road4real
 
+        # vs loss
+        target = self.tf.stop_gradient(self.tf.stack([rewards_sum, real_punish_terms_sum], axis=1))
+        vs_loss = self.tf.reduce_mean(self.tf.square(vs_pred - target))
+
+        # pg loss
         obj_loss = -self.tf.reduce_mean(rewards_sum)
         punish_term_for_training = self.tf.reduce_mean(punish_terms_for_training_sum)
+        punish_loss = self.tf.stop_gradient(pf) * punish_term_for_training
+        pg_loss = obj_loss + punish_loss
+
         real_punish_term = self.tf.reduce_mean(real_punish_terms_sum)
         veh2veh4real = self.tf.reduce_mean(veh2veh4real_sum)
         veh2road4real = self.tf.reduce_mean(veh2road4real_sum)
-        punish_loss = self.tf.stop_gradient(pf) * punish_term_for_training
-        total_loss = obj_loss + punish_loss
 
-        return obj_loss, punish_term_for_training, real_punish_term, punish_loss, total_loss, pf, veh2veh4real, veh2road4real
+        return vs_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss,\
+               real_punish_term, veh2veh4real, veh2road4real, pf
 
     @tf.function
-    def policy_forward_and_backward(self, mb_obs, ite):
-        with self.tf.GradientTape() as tape:
-            obj_loss, punish_term_for_training, real_punish_term, punish_loss, total_loss, pf, veh2veh4real, veh2road4real = self.model_rollout_for_policy_update(mb_obs, ite)
+    def forward_and_backward(self, mb_obs, ite, mb_ref_index):
+        with self.tf.GradientTape(persistent=True) as tape:
+            vs_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss, \
+            real_punish_term, veh2veh4real, veh2road4real, pf\
+                = self.model_rollout_for_update(mb_obs, ite, mb_ref_index)
 
         with self.tf.name_scope('policy_gradient') as scope:
-            policy_gradient = tape.gradient(total_loss, self.policy_with_value.policy.trainable_weights)
-            return policy_gradient, obj_loss, punish_term_for_training, real_punish_term, punish_loss, total_loss, pf, veh2veh4real, veh2road4real
+            pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
+        with self.tf.name_scope('vs_gradient') as scope:
+            vs_grad = tape.gradient(vs_loss, self.policy_with_value.vs.trainable_weights)
+
+        return pg_grad, vs_grad, vs_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss,\
+               real_punish_term, veh2veh4real, veh2road4real, pf
 
     def export_graph(self, writer):
         mb_obs = self.batch_data['batch_obs']
         self.tf.summary.trace_on(graph=True, profiler=False)
-        self.policy_forward_and_backward(mb_obs, self.tf.convert_to_tensor(0, self.tf.int32))
+        self.forward_and_backward(mb_obs, self.tf.convert_to_tensor(0, self.tf.int32),
+                                  self.tf.zeros((len(mb_obs),), dtype=self.tf.int32))
         with writer.as_default():
             self.tf.summary.trace_export(name="policy_forward_and_backward", step=0)
 
@@ -128,29 +137,35 @@ class AMPCLearner(object):
         self.get_batch_data(samples, rb, indexs)
         mb_obs = self.tf.constant(self.batch_data['batch_obs'])
         iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
+        mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
-        with self.policy_gradient_timer:
-            policy_gradient, obj_loss, punish_term_for_training, real_punish_term, punish_loss, total_loss, pf, veh2veh4real, veh2road4real =\
-                self.policy_forward_and_backward(mb_obs, iteration)
-            policy_gradient, policy_gradient_norm = self.tf.clip_by_global_norm(policy_gradient,
-                                                                                self.args.gradient_clip_norm)
+        with self.grad_timer:
+            pg_grad, vs_grad, vs_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss, \
+            real_punish_term, veh2veh4real, veh2road4real, pf =\
+                self.forward_and_backward(mb_obs, iteration, mb_ref_index)
+
+            pg_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
+            vs_grad, vs_grad_norm = self.tf.clip_by_global_norm(vs_grad, self.args.gradient_clip_norm)
 
         self.stats.update(dict(
             iteration=iteration,
-            pg_time=self.policy_gradient_timer.mean,
+            grad_time=self.grad_timer.mean,
             obj_loss=obj_loss.numpy(),
             punish_term_for_training=punish_term_for_training.numpy(),
             real_punish_term=real_punish_term.numpy(),
             veh2veh4real=veh2veh4real.numpy(),
             veh2road4real=veh2road4real.numpy(),
             punish_loss=punish_loss.numpy(),
-            total_loss=total_loss.numpy(),
+            pg_loss=pg_loss.numpy(),
+            vs_loss=vs_loss.numpy(),
             punish_factor=pf.numpy(),
-            policy_gradient_norm=policy_gradient_norm.numpy(),
+            pg_grads_norm=pg_grad_norm.numpy(),
+            vs_grad_norm=vs_grad_norm.numpy(),
         ))
 
-        gradient_tensor = policy_gradient
-        return list(map(lambda x: x.numpy(), gradient_tensor))
+        grads = vs_grad + pg_grad
+
+        return list(map(lambda x: x.numpy(), grads))
 
 
 if __name__ == '__main__':

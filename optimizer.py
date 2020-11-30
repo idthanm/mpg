@@ -103,7 +103,8 @@ class UpdateThread(threading.Thread):
         # evaluate
         if self.iteration % self.args.eval_interval == 0:
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
-            self.evaluator.set_ppc_params.remote(self.workers['remote_workers'][0].get_ppc_params.remote())
+            if self.args.obs_preprocess_type == 'normalize' or self.args.reward_preprocess_type == 'normalize':
+                self.evaluator.set_ppc_params.remote(self.local_worker.get_ppc_params())
             self.evaluator.run_evaluation.remote(self.iteration)
 
         # save
@@ -207,7 +208,7 @@ class OffPolicyAsyncOptimizer(object):
                 learner.set_ppc_params.remote(ppc_params)
             rb, _ = random_choice_with_index(self.replay_buffers)
             samples = ray.get(rb.replay.remote())
-            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+            self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
                                                                           self.local_worker.iteration))
 
     def step(self):
@@ -255,10 +256,11 @@ class OffPolicyAsyncOptimizer(object):
                 if ppc_params and \
                         (self.args.obs_preprocess_type == 'normalize' or self.args.reward_preprocess_type == 'normalize'):
                     learner.set_ppc_params.remote(ppc_params)
+                    self.local_worker.set_ppc_params(ppc_params)
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
-                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:5], rb, samples[-1],
+                self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
                                                                               self.local_worker.iteration))
                 if self.update_thread.inqueue.full():
                     self.num_grads_dropped += 1
@@ -335,7 +337,7 @@ class SingleProcessOffPolicyOptimizer(object):
             if self.args.obs_preprocess_type == 'normalize' or \
                     self.args.reward_preprocess_type == 'normalize':
                 self.learner.set_ppc_params(self.worker.get_ppc_params())
-            grads = self.learner.compute_gradient(samples[:5], self.replay_buffer, samples[-1], self.iteration)
+            grads = self.learner.compute_gradient(samples[:-1], self.replay_buffer, samples[-1], self.iteration)
             learner_stats = self.learner.get_stats()
             if self.args.buffer_type == 'priority':
                 info_for_buffer = self.learner.get_info_for_buffer()
@@ -369,7 +371,7 @@ class SingleProcessOffPolicyOptimizer(object):
                 self.writer.flush()
 
         # evaluate
-        if self.iteration % self.args.eval_interval == 0:
+        if self.iteration % self.args.eval_interval == 0 and self.evaluator is not None:
             self.evaluator.set_weights(self.worker.get_weights())
             self.evaluator.set_ppc_params(self.worker.get_ppc_params())
             self.evaluator.run_evaluation(self.iteration)

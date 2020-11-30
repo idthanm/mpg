@@ -19,7 +19,8 @@ class Trainer(object):
     def __init__(self, policy_cls, worker_cls, learner_cls, buffer_cls, optimizer_cls, evaluator_cls, args):
         self.args = args
         if self.args.optimizer_type.startswith('SingleProcess'):
-            self.evaluator = evaluator_cls(policy_cls, self.args.env_id, self.args)
+            self.evaluator = evaluator_cls(policy_cls, self.args.env_id, self.args) \
+                if evaluator_cls is not None else None
             if self.args.off_policy:
                 self.local_worker = worker_cls(policy_cls, self.args.env_id, self.args, 0)
                 self.buffer = buffer_cls(self.args, 0)
