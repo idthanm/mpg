@@ -118,18 +118,7 @@ def built_AMPC_parser():
 
     # preprocessor
     parser.add_argument('--obs_preprocess_type', type=str, default='scale')
-    num_future_data = parser.parse_args().env_kwargs_num_future_data
-    training_task = parser.parse_args().env_kwargs_training_task
-    # TASK2VEHNUM = {'left': 6, 'straight': 7, 'right': 5}
-    # obs_scale_factor = [0.2, 1., 2., 1/20., 1/20, 1/180.] + \
-    #                    [1., 1/15., 0.2] * (1 + num_future_data) + \
-    #                    [1/20., 1/20., 0.2, 1/180.] * TASK2VEHNUM[training_task]
-    TASK2VEHNUM = {'left': 10, 'straight': 8, 'right': 5}
-    obs_scale = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
-                       [1., 1 / 15., 0.2] + \
-                       [1., 1., 1 / 15.] * num_future_data + \
-                       [1 / 30., 1 / 30., 0.2, 1 / 180.] * TASK2VEHNUM[training_task]
-    parser.add_argument('--obs_scale', type=list, default=obs_scale)
+    parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--reward_preprocess_type', type=str, default='scale')
     parser.add_argument('--reward_scale', type=float, default=1.)
     parser.add_argument('--reward_shift', type=float, default=0.)
@@ -164,6 +153,10 @@ def built_parser(alg_name):
         env = gym.make(args.env_id, **args2envkwargs(args))
         obs_space, act_space = env.observation_space, env.action_space
         args.obs_dim, args.act_dim = obs_space.shape[0], act_space.shape[0]
+        args.obs_scale = [0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] + \
+                         [1., 1 / 15., 0.2] + \
+                         [1., 1., 1 / 15.] * args.env_kwargs_num_future_data + \
+                         [1 / 30., 1 / 30., 0.2, 1 / 180.] * env.veh_num
         return args
 
 def main(alg_name):
