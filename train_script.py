@@ -83,7 +83,7 @@ def built_AMPC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10)
     parser.add_argument('--init_punish_factor', type=float, default=10.)
     parser.add_argument('--pf_enlarge_interval', type=int, default=20000)
-    parser.add_argument('--pf_amplifier', type=float, default=2.)
+    parser.add_argument('--pf_amplifier', type=float, default=1.)
 
     # worker
     parser.add_argument('--batch_size', type=int, default=512)
