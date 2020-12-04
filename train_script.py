@@ -51,11 +51,11 @@ def built_AMPC_parser():
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[150000],
+                           test_iter_list=[100000],
                            test_log_dir=test_log_dir,
                            num_eval_episode=5,
                            eval_log_interval=1,
-                           fixed_steps=80))
+                           fixed_steps=120))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
@@ -107,8 +107,8 @@ def built_AMPC_parser():
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 3e-6])
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 8e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 100000, 1e-5])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 100000, 1e-5])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='elu')
