@@ -295,7 +295,7 @@ def built_PPO_parser_for_DSAC():
     mb_size = parser.parse_args().mini_batch_size
     inner_iter_per_iter = epoch * int(batch_size / mb_size)
     max_iter = int(max_inner_iter / inner_iter_per_iter)
-    eval_num = 750
+    eval_num = 150
     eval_interval = save_interval = int(int(max_inner_iter / eval_num) / inner_iter_per_iter)
 
     # policy and model
