@@ -100,12 +100,12 @@ class PolicyWithValue(tf.Module):
         with self.tf.name_scope('compute_logps') as scope:
             logits = self.policy(obs)
             act_dist = self._logits2dist(logits)
-            if self.args.action_range is not None:
-                act_dist = (
-                    self.tfp.distributions.TransformedDistribution(
-                        distribution=act_dist,
-                        bijector=self.tfb.Affine(scale_identity_multiplier=(1. + 1e-6))
-                    ))
+            # if self.args.action_range is not None:
+            #     act_dist = (
+            #         self.tfp.distributions.TransformedDistribution(
+            #             distribution=act_dist,
+            #             bijector=self.tfb.Affine(scale_identity_multiplier=(1. + 1e-6))
+            #         ))
             return act_dist.log_prob(actions)
 
     @tf.function

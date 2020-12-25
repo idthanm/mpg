@@ -110,6 +110,7 @@ class MLPNetDSAC(Model):
         mean = self.mean(mean)
         logstd = self.hidden_logstd(x)
         logstd = self.logstd(logstd)
+        logstd = tf.clip_by_value(logstd, -5., 1.)
         return tf.concat([mean, logstd], axis=-1)
 
 
