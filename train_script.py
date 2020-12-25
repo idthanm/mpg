@@ -268,7 +268,7 @@ def built_PPO_parser_for_DSAC():
     #Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2 Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
-    parser.add_argument("--action_range", type=float, default=None)
+    parser.add_argument("--action_range", type=float, default=action_range)
 
     # learner
     parser.add_argument("--alg_name", default='PPO')
@@ -372,7 +372,7 @@ def built_TRPO_parser_for_DSAC():
     # Humanoid-v2 Ant-v2 HalfCheetah-v2 Walker2d-v2 InvertedDoublePendulum-v2, Pendulum-v0
     env_id = parser.parse_args().env_id
     action_range = 0.4 if env_id == 'Humanoid-v2' else 1.
-    parser.add_argument("--action_range", type=float, default=None)
+    parser.add_argument("--action_range", type=float, default=action_range)
 
     # learner
     parser.add_argument("--alg_name", default='TRPO')
