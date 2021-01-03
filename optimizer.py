@@ -14,7 +14,7 @@ import numpy as np
 import ray
 import tensorflow as tf
 
-from utils.misc import TimerStat, flatvars, unflatvars, get_shapes
+from utils.misc import TimerStat, flatvars, unflatvars, get_shapes, judge_is_nan
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
@@ -63,8 +63,14 @@ class SingleProcessOptimizer(object):
                 for i in range(self.args.epoch):
                     for mb_index in range(int(self.args.sample_batch_size / self.args.mini_batch_size)):
                         mb_grads = self.worker.compute_gradient_over_ith_minibatch(mb_index)
-                        worker_stats = self.worker.get_stats()
+                        # apply grad
+                        try:
+                            judge_is_nan(mb_grads)
+                        except ValueError:
+                            mb_grads = [tf.zeros_like(grad) for grad in mb_grads]
+                            logger.info('Grad is nan!, zero it')
                         self.worker.apply_grads_all(mb_grads)
+                        worker_stats = self.worker.get_stats()
                         all_stats.append(worker_stats.copy())
 
         all_reduced_stats = {}
@@ -141,6 +147,11 @@ class AllReduceOptimizer(object):
                                         for worker in self.workers['remote_workers']])
                     worker_stats = ray.get([worker.get_stats.remote() for worker in self.workers['remote_workers']])
                     final_grads = np.array(mb_grads).mean(axis=0).tolist()
+                    try:
+                        judge_is_nan(final_grads)
+                    except ValueError:
+                        final_grads = [tf.zeros_like(grad) for grad in final_grads]
+                        logger.info('Grad is nan!, zero it')
                     self.local_worker.apply_grads_all(final_grads)
                     self.sync_remote_workers()
                     for worker_index in range(self.args.num_workers):
@@ -271,7 +282,9 @@ class SingleProcessTRPOOptimizer(object):
 
             with self.line_search_timer:
                 # with the direction, line search is used to determine the stepsize
-                assert np.isfinite(stepdir).all()
+                if not np.isfinite(stepdir).all():
+                    stepdir = np.zeros_like(stepdir)
+                    logger.info('stepdir is nan!, zero it')
                 shs = .5 * stepdir.dot(compute_fvp(stepdir))
                 lm = np.sqrt(shs / self.args.max_kl)
                 fullstep = stepdir / lm
@@ -433,7 +446,9 @@ class TRPOOptimizer(object):
 
             with self.line_search_timer:
                 # with the direction, line search is used to determine the stepsize
-                assert np.isfinite(stepdir).all()
+                if not np.isfinite(stepdir).all():
+                    stepdir = np.zeros_like(stepdir)
+                    logger.info('stepdir is nan!, zero it')
                 shs = .5 * stepdir.dot(compute_fvp(stepdir))
                 lm = np.sqrt(shs / self.args.max_kl)
                 fullstep = stepdir / lm
