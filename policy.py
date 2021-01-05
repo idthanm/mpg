@@ -100,12 +100,7 @@ class PolicyWithValue(tf.Module):
         with self.tf.name_scope('compute_logps') as scope:
             logits = self.policy(obs)
             act_dist = self._logits2dist(logits)
-            # if self.args.action_range is not None:
-            #     act_dist = (
-            #         self.tfp.distributions.TransformedDistribution(
-            #             distribution=act_dist,
-            #             bijector=self.tfb.Affine(scale_identity_multiplier=(1. + 1e-6))
-            #         ))
+            actions = self.tf.clip_by_value(actions, -self.args.action_range+0.01, self.args.action_range-0.01)
             return act_dist.log_prob(actions)
 
     @tf.function
@@ -157,18 +152,54 @@ def test_logps():
     tfb = tfp.bijectors
 
     import numpy as np
-    mean, log_std = np.array([[0.]], np.float32), np.array([[4]], np.float32)
-    base_dist = tfd.MultivariateNormalDiag(mean, tf.exp(log_std))
+    mean, log_std = np.array([[10.]], np.float32), np.array([[-5.]], np.float32)
+    std = np.exp(log_std)
+    act_dist = tfd.MultivariateNormalDiag(mean, tf.exp(log_std))
     act_dist = (
             tfp.distributions.TransformedDistribution(
-                distribution=base_dist,
+                distribution=act_dist,
                 bijector=tfb.Chain(
-                    [tfb.Affine(scale_identity_multiplier=2.+1e-6),
+                    [tfb.Affine(scale_identity_multiplier=1.),
                      tfb.Tanh()])))
-    actions = act_dist.sample()
-    log_pis = act_dist.log_prob(np.array([[1.5]]))
-    logps = tf.reduce_sum(log_pis, axis=-1)
-    print(actions, logps)
+    actions_sampled = act_dist.sample()
+    actions = [[-0.99999]]
+    logp_sampled = act_dist.log_prob(actions_sampled)
+    logp = act_dist.log_prob(actions)
+    print(std, actions_sampled, logp_sampled, actions, logp)
+
+def test_logps2():
+    import tensorflow as tf
+    import tensorflow_probability as tfp
+    tfd = tfp.distributions
+    tfb = tfp.bijectors
+
+    import numpy as np
+    mean, log_std = np.array([[1000]], np.float32), np.array([[-5.]], np.float32)
+    act_dist = tfd.Normal(mean, tf.exp(log_std))
+    actions = [[1.-0.01]]#act_dist.sample()
+    actions_norm = actions
+    actions_sampled = tf.math.atanh(actions_norm)
+    logp = act_dist.log_prob(actions_sampled) - tf.math.log(1. - tf.square(actions_norm))
+    # 猜测nan的根源在inf-inf 解决办法就是不能要边界值
+    logp = tf.reduce_sum(logp, axis=-1, keepdims=True)
+
+    print(actions, logp)
+
+def test_logps3():
+    import torch
+    from torch.distributions import Normal
+    mean, log_std = torch.Tensor([[0.]]), torch.Tensor([[100000.]])
+    act_dist = Normal(mean, log_std.exp())
+    actions = torch.Tensor([[0.1]])#act_dist.sample()
+    actions_norm = actions
+    actions_sampled = torch.atanh(actions_norm)
+    print(act_dist.log_prob(actions_sampled))
+    logp = act_dist.log_prob(actions_sampled) - torch.log(1. - actions_norm.pow(2))
+    logp = logp.sum(dim=-1, keepdim=True)
+
+    print(actions, logp)
+
+
 
 
 def testMultivariateNormalDiag():
@@ -184,3 +215,4 @@ def testMultivariateNormalDiag():
 
 if __name__ == "__main__":
     test_logps()
+    test_logps2()
