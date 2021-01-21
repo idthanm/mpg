@@ -57,7 +57,7 @@ def save_eval_results_of_all_alg_n_runs_all_env(dirs_dict_for_plot=None):
                     freq = 80
                 else:
                     assert alg == 'trpo'
-                    freq = 20
+                    freq = 20 if len2 > 40000 else 80
                 data_in_one_run_of_one_alg_one_env['iteration'] = [
                     data_in_one_run_of_one_alg_one_env['iteration'][i * period] * freq for i in range(len2)]
 
