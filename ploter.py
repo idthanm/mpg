@@ -27,7 +27,7 @@ METHOD2IDX = {'ppo': '7', 'trpo': '8'}
 
 def mkdir(dir):
     if not os.path.exists(dir):
-        os.mkdir(dir)
+        os.makedirs(dir)
 
 
 def save_eval_results_of_all_alg_n_runs_all_env(dirs_dict_for_plot=None):
@@ -66,9 +66,9 @@ def save_eval_results_of_all_alg_n_runs_all_env(dirs_dict_for_plot=None):
                 mkdir(dir)
                 np.save(dir + '/iteration.npy', np.array(data_in_one_run_of_one_alg_one_env['iteration']))
                 np.save(dir + '/average_return_with_diff_base.npy',
-                        np.array([data_in_one_run_of_one_alg_one_env['average_return_with_max1'],
+                        np.array([(i, j, k) for i, j, k in zip(data_in_one_run_of_one_alg_one_env['average_return_with_max1'],
                                   data_in_one_run_of_one_alg_one_env['average_return_with_max3'],
-                                  data_in_one_run_of_one_alg_one_env['average_return_with_max5']]))
+                                  data_in_one_run_of_one_alg_one_env['average_return_with_max5'])]))
                 np.save(dir + '/evaluated_Q_mean.npy', np.array(data_in_one_run_of_one_alg_one_env['eval_v_mean']))
                 np.save(dir + '/true_gamma_return_mean.npy', np.array(data_in_one_run_of_one_alg_one_env['true_v_mean']))
                 # -------------------------------save------------------------------------
