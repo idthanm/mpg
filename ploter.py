@@ -25,6 +25,11 @@ ENV2ID = {'ant': 'Ant-v2',
 METHOD2IDX = {'ppo': '7', 'trpo': '8'}
 
 
+def mkdir(dir):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
+
+
 def save_eval_results_of_all_alg_n_runs_all_env(dirs_dict_for_plot=None):
     tag2plot = ['average_return_with_max1', 'average_return_with_max3', 'average_return_with_max5', 'true_v_mean', 'eval_v_mean']
     for alg in ['ppo', 'trpo']:
@@ -57,21 +62,15 @@ def save_eval_results_of_all_alg_n_runs_all_env(dirs_dict_for_plot=None):
                     data_in_one_run_of_one_alg_one_env['iteration'][i * period] * freq for i in range(len2)]
 
                 # -------------------------------save------------------------------------
-                np.save(
-                    './' + ENV2ID[env] + '-run' + str(num_run) + '/method_' + METHOD2IDX[alg] + '/result/iteration.npy',
-                    np.array(data_in_one_run_of_one_alg_one_env['iteration']))
-                np.save('./' + ENV2ID[env] + '-run' + str(num_run) + '/method_' + METHOD2IDX[
-                    alg] + '/result/average_return_with_diff_base.npy',
+                dir = './' + ENV2ID[env] + '-run' + str(num_run) + '/method_' + METHOD2IDX[alg] + '/result'
+                mkdir(dir)
+                np.save(dir + '/iteration.npy', np.array(data_in_one_run_of_one_alg_one_env['iteration']))
+                np.save(dir + '/average_return_with_diff_base.npy',
                         np.array([data_in_one_run_of_one_alg_one_env['average_return_with_max1'],
                                   data_in_one_run_of_one_alg_one_env['average_return_with_max3'],
                                   data_in_one_run_of_one_alg_one_env['average_return_with_max5']]))
-                np.save(
-                    './' + ENV2ID[env] + '-run' + str(num_run) + '/method_' + METHOD2IDX[alg] + '/result/evaluated_Q_mean.npy',
-                    np.array(data_in_one_run_of_one_alg_one_env['eval_v_mean']))
-                np.save(
-                    './' + ENV2ID[env] + '-run' + str(num_run) + '/method_' + METHOD2IDX[
-                        alg] + '/result/true_gamma_return_mean.npy',
-                    np.array(data_in_one_run_of_one_alg_one_env['true_v_mean']))
+                np.save(dir + '/evaluated_Q_mean.npy', np.array(data_in_one_run_of_one_alg_one_env['eval_v_mean']))
+                np.save(dir + '/true_gamma_return_mean.npy', np.array(data_in_one_run_of_one_alg_one_env['true_v_mean']))
                 # -------------------------------save------------------------------------
 
 
