@@ -36,6 +36,8 @@ def cal_gamma_return_of_an_episode(reward_list, gamma, reward_shift=None, reward
 class Evaluator(object):
     import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+    tf.config.threading.set_intra_op_parallelism_threads(1)
 
     def __init__(self, policy_cls, env_id, args):
         logging.getLogger("tensorflow").setLevel(logging.ERROR)
