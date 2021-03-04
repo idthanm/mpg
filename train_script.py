@@ -92,7 +92,7 @@ def built_AMPC_parser():
 
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
-    parser.add_argument('--replay_starts', type=int, default=3000)
+    parser.add_argument('--replay_starts', type=int, default=1000)
     parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
@@ -127,7 +127,7 @@ def built_AMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=150000)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=40)
+    parser.add_argument('--num_learners', type=int, default=30)
     parser.add_argument('--num_buffers', type=int, default=4)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
