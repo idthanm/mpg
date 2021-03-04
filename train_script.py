@@ -42,7 +42,7 @@ NAME2EVALUATORS = dict([('Evaluator', Evaluator), ('None', None)])
 def built_AMPC_parser():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--mode', type=str, default='testing') # training testing
+    parser.add_argument('--mode', type=str, default='training')  # training testing
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -69,7 +69,7 @@ def built_AMPC_parser():
     parser.add_argument('--off_policy', type=str, default=True)
 
     # env
-    parser.add_argument('--env_id', default='CrossroadEnd2end-v0')
+    parser.add_argument('--env_id', default='CrossroadEnd2end-v2')
     parser.add_argument('--env_kwargs_num_future_data', type=int, default=0)
     parser.add_argument('--env_kwargs_training_task', type=str, default='left')
     parser.add_argument('--obs_dim', default=None)
@@ -138,7 +138,7 @@ def built_AMPC_parser():
 
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-    results_dir = './results/toyota3lane/experiment-{time}'.format(time=time_now)
+    results_dir = './results/integrate_3lane/experiment-{time}'.format(time=time_now)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
