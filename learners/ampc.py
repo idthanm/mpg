@@ -91,10 +91,10 @@ class AMPCLearner(object):
             actions, _ = self.policy_with_value.compute_action(processed_obses)
             obses, rewards, punish_terms_for_training, real_punish_term, veh2veh4real, veh2road4real = self.model.rollout_out(actions)
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-            punish_terms_for_training_sum += punish_terms_for_training
-            real_punish_terms_sum += real_punish_term
-            veh2veh4real_sum += veh2veh4real
-            veh2road4real_sum += veh2road4real
+            punish_terms_for_training_sum += self.args.reward_scale * punish_terms_for_training
+            real_punish_terms_sum += self.args.reward_scale * real_punish_term
+            veh2veh4real_sum += self.args.reward_scale * veh2veh4real
+            veh2road4real_sum += self.args.reward_scale * veh2road4real
 
         # obj v loss
         obj_v_loss = self.tf.reduce_mean(self.tf.square(obj_v_pred - self.tf.stop_gradient(rewards_sum)))
