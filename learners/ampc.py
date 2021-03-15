@@ -97,7 +97,7 @@ class AMPCLearner(object):
             veh2road4real_sum += self.args.reward_scale * veh2road4real
 
         # obj v loss
-        obj_v_loss = self.tf.reduce_mean(self.tf.square(obj_v_pred - self.tf.stop_gradient(rewards_sum)))
+        obj_v_loss = self.tf.reduce_mean(self.tf.square(obj_v_pred - self.tf.stop_gradient(-rewards_sum)))
         # con_v_loss = self.tf.reduce_mean(self.tf.square(con_v_pred - self.tf.stop_gradient(real_punish_terms_sum)))
 
         # pg loss

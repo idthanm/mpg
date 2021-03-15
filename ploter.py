@@ -86,7 +86,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax1 = f1.add_axes([0.13, 0.12, 0.86, 0.87])
     sns.lineplot(x="iteration", y="learner_stats/scalar/obj_loss_smo", hue="task",
                  data=total_dataframe, linewidth=2, palette=palette,)
-    # plt.ylim(0, 100)
+    plt.ylim(0, 80)
     handles, labels = ax1.get_legend_handles_labels()
     labels = lbs
     ax1.legend(handles=handles, labels=labels, loc='upper right', frameon=False, fontsize=fontsize)
@@ -108,22 +108,23 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     plt.savefig('./loss_critic.pdf')
 
     f3 = plt.figure(3, figsize=figsize)
-    ax3 = f3.add_axes([0.12, 0.12, 0.87, 0.87])
+    ax3 = f3.add_axes([0.10, 0.12, 0.89, 0.87])
     sns.lineplot(x="iteration", y="learner_stats/scalar/real_punish_term_smo", hue="task",
                  data=total_dataframe, linewidth=2, palette=palette, legend=False)
     ax3.set_ylabel('$J_{\\rm penalty}$', fontsize=fontsize)
     ax3.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+    plt.ylim(0, 6)
     plt.yticks(fontsize=fontsize)
     plt.xticks(fontsize=fontsize)
     plt.savefig('./loss_penalty.pdf')
 
     f4 = plt.figure(4, figsize=figsize)
     ax4 = f4.add_axes([0.11, 0.12, 0.86, 0.87])
-    sns.lineplot(x="iteration", y="learner_stats/scalar/veh2veh4real", hue="task",
+    sns.lineplot(x="iteration", y="learner_stats/scalar/veh2veh4real_smo", hue="task",
                  data=total_dataframe, linewidth=2, palette=palette, legend=False)
     ax4.set_ylabel('Ego-to-veh Penalty', fontsize=fontsize)
     ax4.set_xlabel("Iteration [x10000]", fontsize=fontsize)
-    plt.ylim(0, 3)
+    plt.ylim(0, 0.5)
     plt.yticks(fontsize=fontsize)
     plt.xticks(fontsize=fontsize)
     plt.savefig('./ego2veh_penalty.pdf')
