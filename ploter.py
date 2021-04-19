@@ -80,7 +80,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
     figsize = (10, 8)
     axes_size = [0.12, 0.12, 0.87, 0.87]
-    fontsize = 25
+    fontsize = 30
 
     f1 = plt.figure(1, figsize=figsize)
     ax1 = f1.add_axes([0.13, 0.12, 0.86, 0.87])
@@ -93,18 +93,18 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax1.set_ylabel('$J_{\\rm actor}$', fontsize=fontsize)
     ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
     plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
+    plt.xticks(range(0, 25, 5), fontsize=fontsize)
     plt.savefig('./loss_actor.pdf')
 
     f2 = plt.figure(2, figsize=figsize)
-    ax2 = f2.add_axes([0.15, 0.12, 0.85, 0.86])
+    ax2 = f2.add_axes([0.17, 0.12, 0.82, 0.86])
     sns.lineplot(x="iteration", y="learner_stats/scalar/obj_v_loss_smo", hue="task",
                  data=total_dataframe, linewidth=2, palette=palette, legend=False)
     plt.ylim(0, 1000)
     ax2.set_ylabel('$J_{\\rm critic}$', fontsize=fontsize)
     ax2.set_xlabel("Iteration [x10000]", fontsize=fontsize)
     plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
+    plt.xticks(range(0, 25, 5), fontsize=fontsize)
     plt.savefig('./loss_critic.pdf')
 
     f3 = plt.figure(3, figsize=figsize)
@@ -115,7 +115,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax3.set_xlabel("Iteration [x10000]", fontsize=fontsize)
     plt.ylim(0, 6)
     plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
+    plt.xticks(range(0, 25, 5), fontsize=fontsize)
     plt.savefig('./loss_penalty.pdf')
 
     f4 = plt.figure(4, figsize=figsize)
@@ -126,7 +126,7 @@ def plot_opt_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     ax4.set_xlabel("Iteration [x10000]", fontsize=fontsize)
     plt.ylim(0, 0.5)
     plt.yticks(fontsize=fontsize)
-    plt.xticks(fontsize=fontsize)
+    plt.xticks(range(0, 25, 5), fontsize=fontsize)
     plt.savefig('./ego2veh_penalty.pdf')
     plt.show()
 
