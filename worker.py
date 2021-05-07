@@ -11,6 +11,7 @@ import logging
 
 import gym
 import numpy as np
+import tensorflow as tf
 
 from preprocessor import Preprocessor
 from utils.misc import judge_is_nan, args2envkwargs
@@ -22,7 +23,6 @@ logging.basicConfig(level=logging.INFO)
 
 
 class OffPolicyWorker(object):
-    import tensorflow as tf
     tf.config.experimental.set_visible_devices([], 'GPU')
     tf.config.threading.set_inter_op_parallelism_threads(1)
     tf.config.threading.set_intra_op_parallelism_threads(1)
@@ -38,8 +38,7 @@ class OffPolicyWorker(object):
         self.obs = self.env.reset()
         self.done = False
         self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
-                                         gamma=self.args.gamma)
+                                          self.args.reward_scale, self.args.reward_shift, args=self.args, gamma=self.args.gamma)
 
         self.explore_sigma = self.args.explore_sigma
         self.iteration = 0
@@ -70,7 +69,7 @@ class OffPolicyWorker(object):
 
     def apply_gradients(self, iteration, grads):
         self.iteration = iteration
-        self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads)
+        self.policy_with_value.apply_gradients(tf.constant(iteration, dtype=tf.int32), grads)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
@@ -87,7 +86,13 @@ class OffPolicyWorker(object):
     def sample(self):
         batch_data = []
         for _ in range(self.batch_size):
-            processed_obs = self.preprocessor.process_obs(self.obs)
+            obs_ego = self.obs[: self.args.state_ego_dim + self.args.state_track_dim]
+            obs_other = np.reshape(self.obs[self.args.state_ego_dim + self.args.state_track_dim:],
+                                  (-1, self.args.state_other_dim))
+
+            processed_obs_ego, processed_obs_other = self.preprocessor.process_obs_PI(obs_ego, obs_other)
+            PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
+            processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
             judge_is_nan([processed_obs])
             action, logp = self.policy_with_value.compute_action(processed_obs[np.newaxis, :])
             if self.explore_sigma is not None:
@@ -103,7 +108,13 @@ class OffPolicyWorker(object):
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy()[0])
             processed_rew = self.preprocessor.process_rew(reward, self.done)
-            batch_data.append((self.obs.copy(), action.numpy()[0], reward, obs_tp1.copy(), self.done, info['ref_index']))
+            obs_ego_next = obs_tp1[: self.args.state_ego_dim + self.args.state_track_dim]
+            obs_other_next = np.reshape(obs_tp1[self.args.state_ego_dim + self.args.state_track_dim:],
+                                        (-1, self.args.state_other_dim))
+            veh_num_next = info['veh_num']
+            veh_mode_next = np.reshape(np.array(info['veh_mode'], dtype=np.string_), [veh_num_next, -1])
+            # print(veh_mode_next, veh_mode_next.shape)
+            batch_data.append((obs_ego_next, obs_other_next, veh_num_next, veh_mode_next, self.done, info['ref_index']))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 

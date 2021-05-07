@@ -12,6 +12,7 @@ import os
 
 import gym
 import numpy as np
+import tensorflow as tf
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
@@ -40,8 +41,7 @@ class Evaluator(object):
             os.makedirs(self.log_dir)
 
         self.preprocessor = Preprocessor((self.args.obs_dim, ), self.args.obs_preprocess_type, self.args.reward_preprocess_type,
-                                         self.args.obs_scale, self.args.reward_scale, self.args.reward_shift,
-                                         gamma=self.args.gamma)
+                                         self.args.reward_scale, self.args.reward_shift, args=self.args, gamma=self.args.gamma)
 
         self.writer = self.tf.summary.create_file_writer(self.log_dir)
         self.stats = {}
@@ -70,7 +70,13 @@ class Evaluator(object):
         if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
-                processed_obs = self.preprocessor.tf_process_obses(obs)
+                obs_ego = obs[: self.args.state_ego_dim + self.args.state_track_dim]
+                obs_other = np.reshape(obs[self.args.state_ego_dim + self.args.state_track_dim:],
+                                       (-1, self.args.state_other_dim))
+                processed_obs_ego, processed_obs_other = self.preprocessor.tf_process_obses_PI(obs_ego, obs_other)
+                PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
+                processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
+
                 action = self.policy_with_value.compute_mode(processed_obs[np.newaxis, :])
                 obs, reward, done, info = self.env.step(action.numpy()[0])
                 reward_info_dict_list.append(info['reward_info'])
@@ -78,7 +84,12 @@ class Evaluator(object):
                 reward_list.append(reward)
         else:
             while not done:
-                processed_obs = self.preprocessor.tf_process_obses(obs)
+                obs_ego = obs[: self.args.state_ego_dim + self.args.state_track_dim]
+                obs_other = np.reshape(obs[self.args.state_ego_dim + self.args.state_track_dim:], (-1, self.args.state_other_dim))
+                processed_obs_ego, processed_obs_other = self.preprocessor.tf_process_obses_PI(obs_ego, obs_other)
+                PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
+                processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
+
                 action = self.policy_with_value.compute_mode(processed_obs[np.newaxis, :])
                 obs, reward, done, info = self.env.step(action.numpy()[0])
                 reward_info_dict_list.append(info['reward_info'])
@@ -96,8 +107,6 @@ class Evaluator(object):
         return info_dict
 
     def run_n_episode(self, n):
-        list_of_return = []
-        list_of_len = []
         list_of_info_dict = []
         for _ in range(n):
             logger.info('logging {}-th episode'.format(_))

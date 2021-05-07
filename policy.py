@@ -30,14 +30,16 @@ class Policy4Toyota(tf.Module):
         self.args = args
         obs_dim, act_dim = self.args.obs_dim, self.args.act_dim
         n_hiddens, n_units, hidden_activation = self.args.num_hidden_layers, self.args.num_hidden_units, self.args.hidden_activation
-        value_model_cls, policy_model_cls = NAME2MODELCLS[self.args.value_model_cls], \
-                                            NAME2MODELCLS[self.args.policy_model_cls]
+        value_model_cls, policy_model_cls, PI_model_cls = NAME2MODELCLS[self.args.value_model_cls], \
+                                                          NAME2MODELCLS[self.args.policy_model_cls], \
+                                                          NAME2MODELCLS[self.args.PI_model_cls]
         self.policy = policy_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, act_dim * 2, name='policy',
                                        output_activation=self.args.policy_out_activation)
         policy_lr_schedule = PolynomialDecay(*self.args.policy_lr_schedule)
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='adam_opt')
 
-        self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v')
+        self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v',
+                                     output_activation='relu')
         # self.con_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='con_v')
 
         obj_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
@@ -46,8 +48,18 @@ class Policy4Toyota(tf.Module):
         # con_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
         # self.con_value_optimizer = self.tf.keras.optimizers.Adam(con_value_lr_schedule, name='conv_adam_opt')
 
-        self.models = (self.obj_v, self.policy,)
-        self.optimizers = (self.obj_value_optimizer, self.policy_optimizer)
+        # add PI_net
+        PI_in_dim, PI_out_dim = self.args.PI_in_dim, self.args.PI_out_dim
+        n_hiddens, n_units, hidden_activation = self.args.PI_num_hidden_layers, self.args.PI_num_hidden_units, \
+                                                self.args.PI_hidden_activation
+
+        self.PI_net = PI_model_cls(PI_in_dim, n_hiddens, n_units, hidden_activation, PI_out_dim, name='PI_net',
+                                       output_activation=self.args.PI_out_activation)
+        PI_lr_schedule = PolynomialDecay(*self.args.PI_lr_schedule)
+        self.PI_optimizer = self.tf.keras.optimizers.Adam(PI_lr_schedule, name='adam_opt_PI')
+
+        self.models = (self.obj_v, self.policy, self.PI_net)
+        self.optimizers = (self.obj_value_optimizer, self.policy_optimizer, self.PI_optimizer)
 
     def save_weights(self, save_dir, iteration):
         model_pairs = [(model.name, model) for model in self.models]
@@ -71,11 +83,12 @@ class Policy4Toyota(tf.Module):
     @tf.function
     def apply_gradients(self, iteration, grads):
         obj_v_len = len(self.obj_v.trainable_weights)
-        # con_v_len = len(self.con_v.trainable_weights)
-        obj_v_grad, policy_grad = grads[:obj_v_len], grads[obj_v_len:]
+        pg_len = len(self.policy.trainable_weights)
+        obj_v_grad, policy_grad = grads[:obj_v_len], grads[obj_v_len:obj_v_len+pg_len]
+        PI_grad = grads[obj_v_len + pg_len:]
         self.obj_value_optimizer.apply_gradients(zip(obj_v_grad, self.obj_v.trainable_weights))
-        # self.con_value_optimizer.apply_gradients(zip(con_v_grad, self.con_v.trainable_weights))
         self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
+        self.PI_optimizer.apply_gradients(zip(PI_grad, self.PI_net.trainable_weights))
 
     @tf.function
     def compute_mode(self, obs):
@@ -114,10 +127,10 @@ class Policy4Toyota(tf.Module):
         with self.tf.name_scope('compute_obj_v') as scope:
             return tf.squeeze(self.obj_v(obs), axis=1)
 
-    # @tf.function
-    # def compute_con_v(self, obs):
-    #     with self.tf.name_scope('compute_con_v') as scope:
-    #         return tf.squeeze(self.con_v(obs), axis=1)
+    @tf.function
+    def compute_PI(self, obs):
+        with self.tf.name_scope('compute_PI') as scope:
+            return self.PI_net(obs)
 
 
 def test_policy():
