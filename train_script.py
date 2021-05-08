@@ -75,8 +75,8 @@ def built_AMPC_parser():
     parser.add_argument('--obs_dim', default=None)
     parser.add_argument('--act_dim', default=None)
 
-    parser.add_argument('--PI_in_dim', dest='list', type=int, default=[])  # dimension of each surrounding vehicle state
-    parser.add_argument('--PI_out_dim', dest='list', type=int, default=[])
+    parser.add_argument('--PI_in_dim', type=int, default=None)
+    parser.add_argument('--PI_out_dim', type=int, default=None)
     parser.add_argument('--max_veh_num', type=int, default=8)
     parser.add_argument('--state_ego_dim', type=int, default=None)
     parser.add_argument('--state_track_dim', type=int, default=None)
@@ -100,7 +100,7 @@ def built_AMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=1024)
+    parser.add_argument('--replay_batch_size', type=int, default=512)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -142,11 +142,11 @@ def built_AMPC_parser():
     parser.add_argument('--max_sampled_steps', type=int, default=0)
     parser.add_argument('--max_iter', type=int, default=200000)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=20)
+    parser.add_argument('--num_learners', type=int, default=15)
     parser.add_argument('--num_buffers', type=int, default=4)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
-    parser.add_argument('--grads_max_reuse', type=int, default=0)
+    parser.add_argument('--grads_max_reuse', type=int, default=0)  # todo: if not 0, then obj_v_grad and pg_grad will be 0
     parser.add_argument('--eval_interval', type=int, default=5000)
     parser.add_argument('--save_interval', type=int, default=5000)
     parser.add_argument('--log_interval', type=int, default=100)

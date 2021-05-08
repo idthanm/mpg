@@ -96,7 +96,6 @@ class AMPCLearner(object):
         veh2veh4real_sum = self.tf.zeros((start_obses_ego.shape[0],))
         veh2road4real_sum = self.tf.zeros((start_obses_ego.shape[0],))
         pf = self.punish_factor_schedule(ite)
-
         obses_ego, obses_other = start_obses_ego, start_obses_other
         processed_obses_ego, processed_obses_other = self.preprocessor.tf_process_obses_PI(obses_ego, obses_other)
         # no supplement vehicle currently # todo: gradient disappear?
@@ -112,13 +111,13 @@ class AMPCLearner(object):
             obses_ego, obses_other, rewards, punish_terms_for_training, real_punish_term, veh2veh4real, veh2road4real = self.model.rollout_out(actions)
 
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
-            punish_terms_for_training_sum += punish_terms_for_training
-            real_punish_terms_sum += real_punish_term
-            veh2veh4real_sum += veh2veh4real
-            veh2road4real_sum += veh2road4real
+            punish_terms_for_training_sum += self.args.reward_scale * punish_terms_for_training
+            real_punish_terms_sum += self.args.reward_scale * real_punish_term
+            veh2veh4real_sum += self.args.reward_scale * veh2veh4real
+            veh2road4real_sum += self.args.reward_scale * veh2road4real
 
         # obj v loss
-        obj_v_loss = self.tf.reduce_mean(self.tf.square(obj_v_pred - self.tf.stop_gradient(rewards_sum)))
+        obj_v_loss = self.tf.reduce_mean(self.tf.square(obj_v_pred - self.tf.stop_gradient(-rewards_sum)))
         # con_v_loss = self.tf.reduce_mean(self.tf.square(con_v_pred - self.tf.stop_gradient(real_punish_terms_sum)))
 
         # pg loss
@@ -150,6 +149,8 @@ class AMPCLearner(object):
         with self.tf.name_scope('obj_v_gradient') as scope:
             obj_v_grad = tape.gradient(obj_v_loss, self.policy_with_value.obj_v.trainable_weights)
             PI_net_grad = tape.gradient(obj_v_loss, self.policy_with_value.PI_net.trainable_weights)
+            print('obj_v_grad-----------------------------', obj_v_grad)
+            print('PI_net_grad-----------------------------', PI_net_grad)
         # with self.tf.name_scope('con_v_gradient') as scope:
         #     con_v_grad = tape.gradient(con_v_loss, self.policy_with_value.con_v.trainable_weights)
 
