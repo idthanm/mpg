@@ -340,10 +340,9 @@ class OffPolicyAsyncOptimizerWithCost(object):
         while not all([l >= self.args.replay_starts for l in
                        ray.get([rb.__len__.remote() for rb in self.replay_buffers])]):
             for worker, objID in list(self.sample_tasks.completed()):
-                sample_batch, count, count_costs = ray.get(objID)
+                sample_batch, count = ray.get(objID)
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
-                self.num_sampled_costs += count_costs
                 self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
         logger.info('end filling the replay')
 
@@ -360,10 +359,8 @@ class OffPolicyAsyncOptimizerWithCost(object):
         np.random.seed(seed)
 
     def get_stats(self):
-        cost_rate = self.num_sampled_costs/self.num_sampled_steps
         self.stats.update(dict(num_sampled_steps=self.num_sampled_steps,
                                num_sampled_costs=self.num_sampled_costs,
-                               cost_rate=cost_rate,
                                iteration=self.iteration,
                                optimizer_steps=self.optimizer_steps,
                                num_samples_dropped=self.num_samples_dropped,

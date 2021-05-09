@@ -126,8 +126,8 @@ class ReplayBufferWithCost(object):
     def __len__(self):
         return len(self._storage)
 
-    def add(self, obs_t, action, reward, obs_tp1, done, cost, weight):
-        data = (obs_t, action, reward, obs_tp1, done, cost)
+    def add(self, obs_t, action, reward, obs_tp1, done, velo, weight):
+        data = (obs_t, action, reward, obs_tp1, done, velo)
         if self._next_idx >= len(self._storage):
             self._storage.append(data)
         else:

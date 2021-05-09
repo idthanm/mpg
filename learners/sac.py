@@ -262,7 +262,7 @@ class SACLearnerWithCost(object):
                            'batch_rewards': batch_data[2].astype(np.float32),
                            'batch_obs_tp1': batch_data[3].astype(np.float32),
                            'batch_dones': batch_data[4].astype(np.float32),
-                           'batch_costs': batch_data[5].astype(np.float32)
+                           'batch_velos': batch_data[5].astype(np.float32)
                            }
 
         with self.target_timer:
@@ -284,8 +284,6 @@ class SACLearnerWithCost(object):
 
         target_Q1_of_tp1 = self.policy_with_value.compute_Q1_target(processed_obs_tp1, act_tp1).numpy()
         target_Q2_of_tp1 = self.policy_with_value.compute_Q2_target(processed_obs_tp1, act_tp1).numpy()
-        target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
-
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
@@ -293,14 +291,16 @@ class SACLearnerWithCost(object):
                                   (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
 
-        processed_cost = self.batch_data['batch_costs']
+        #
         # target_QC_of_tp1 = processed_cost + self.args.cost_gamma * self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
         if self.args.double_QC:
+            processed_cost = self.batch_data['batch_costs']
+            target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
             target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
             clipped_double_qc_target = processed_cost + self.args.cost_gamma * \
                                        (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
         else:
-            clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
+            clipped_double_qc_target = self.batch_data['batch_velos'].numpy()
 
         return clipped_double_q_target, np.clip(clipped_double_qc_target, 0, np.inf)
 

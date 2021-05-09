@@ -293,7 +293,7 @@ class EvaluatorWithCost(object):
         reward_list = []
         info_list = []
         done = 0
-        cost_list = []
+        velo_list = []
         qc_list = []
         lam_list = []
         obs = self.env.reset()
@@ -313,11 +313,11 @@ class EvaluatorWithCost(object):
                 action_list.append(action[0])
 
                 obs, reward, done, info = self.env.step(action.numpy())
-                cost = info[0].get('cost')
+                velo = info[0].get('x_velocity')
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
-                cost_list.append(cost)
+                velo_list.append(velo)
         else:
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
@@ -336,16 +336,17 @@ class EvaluatorWithCost(object):
                 # print("qc: {}".format(qc_val.numpy()))
                 # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
-                cost = info[0].get('cost')
+                velo = info[0].get('x_velocity')
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
-                cost_list.append(cost)
+                velo_list.append(velo)
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()
-        episode_cost = sum(cost_list)
-        ep_cost_rate = episode_cost / episode_len
+        episode_velo = sum(velo_list)/len(velo_list)
+        max_velo = max(velo_list)
+        min_velo = min(velo_list)
         for key in info_list[0].keys():
             info_key = list(map(lambda x: x[key], info_list))
             mean_key = sum(info_key) / len(info_key)
@@ -355,8 +356,9 @@ class EvaluatorWithCost(object):
                               reward_list=np.array(reward_list),
                               episode_return=episode_return,
                               episode_len=episode_len,
-                              episode_cost=episode_cost,
-                              ep_cost_rate=ep_cost_rate))
+                              episode_velo_mean=episode_velo,
+                              episode_velo_max=max_velo,
+                              episode_velo_min=min_velo))
         return info_dict
 
     def run_n_episodes(self, n):
