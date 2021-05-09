@@ -408,10 +408,9 @@ class OffPolicyAsyncOptimizerWithCost(object):
         # sampling
         with self.timers['sampling_timer']:
             for worker, objID in self.sample_tasks.completed():
-                sample_batch, count, count_costs = ray.get(objID)
+                sample_batch, count = ray.get(objID)
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
-                self.num_sampled_costs += count_costs
                 self.steps_since_update[worker] += count
                 ppc_params = worker.get_ppc_params.remote()
                 if self.steps_since_update[worker] >= self.max_weight_sync_delay:

@@ -300,14 +300,14 @@ class SACLearnerWithCost(object):
             clipped_double_qc_target = processed_cost + self.args.cost_gamma * \
                                        (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
         else:
-            clipped_double_qc_target = self.batch_data['batch_velos'].numpy()
+            clipped_double_qc_target = self.batch_data['batch_velos']
 
         return clipped_double_q_target, np.clip(clipped_double_qc_target, 0, np.inf)
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-        processed_cost = self.batch_data['batch_costs']
+        processed_cost = self.batch_data['batch_velos']
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
         values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()
@@ -317,7 +317,7 @@ class SACLearnerWithCost(object):
 
         cost_values_t = self.policy_with_value.compute_QC1(processed_obs, self.batch_data['batch_actions']).numpy()
         target_Q_cost_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, target_act_tp1).numpy()
-        cost_td_error = np.abs(processed_cost + self.args.gamma * target_Q_cost_of_tp1 - cost_values_t) + 1e-8
+        cost_td_error = np.abs(processed_cost - cost_values_t) + 1e-8
         return td_error, cost_td_error
 
     def get_weights(self):

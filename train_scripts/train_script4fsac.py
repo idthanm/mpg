@@ -29,7 +29,7 @@ from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, 
 from policy import PolicyWithQs, PolicyWithMu
 from tester import Tester
 from trainer import Trainer
-from worker import OffPolicyWorker, OffPolicyWorkerWithCost
+from worker import OffPolicyWorkerWithCost
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
-NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
+NAME2WORKERCLS = dict([
                        ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
 NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ('AMPC', AMPCLearner),
@@ -58,9 +58,9 @@ NAME2OPTIMIZERCLS = dict([('OffPolicyAsync', OffPolicyAsyncOptimizer),
                           ('SingleProcessOffPolicy', SingleProcessOffPolicyOptimizer)])
 NAME2POLICYCLS = dict([('PolicyWithQs', PolicyWithQs),('PolicyWithMu',PolicyWithMu)])
 NAME2EVALUATORCLS = dict([('Evaluator', Evaluator), ('EvaluatorWithCost', EvaluatorWithCost), ('None', None)])
-NUM_WORKER = 10
-NUM_LEARNER = 10
-NUM_BUFFER = 10
+NUM_WORKER = 4
+NUM_LEARNER = 4
+NUM_BUFFER = 4
 
 def built_FSAC_parser():
     parser = argparse.ArgumentParser()
@@ -95,11 +95,11 @@ def built_FSAC_parser():
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
     parser.add_argument('--random_seed', type=int, default=2)
-    parser.add_argument('--penalty_start', type=int, default=1500000)
+    parser.add_argument('--penalty_start', type=int, default=600000)
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='Safexp-PointButton1-v0')
+    parser.add_argument('--env_id', default='Walker2d-v3')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -111,7 +111,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=4.0)
+    parser.add_argument('--cost_lim', type=float, default=80.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -150,13 +150,13 @@ def built_FSAC_parser():
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1000000, 3e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 300000, 3e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 400000, 3e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 100000, 3e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-2)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 1000000, 8e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 400000, 8e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -179,14 +179,14 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=3000000)
+    parser.add_argument('--max_iter', type=int, default=1200000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=30)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=10)
-    parser.add_argument('--eval_interval', type=int, default=5000) # 1000
+    parser.add_argument('--grads_max_reuse', type=int, default=25)
+    parser.add_argument('--eval_interval', type=int, default=10000) # 1000
     parser.add_argument('--save_interval', type=int, default=200000) # 200000
     parser.add_argument('--log_interval', type=int, default=100) # 100
 
@@ -319,7 +319,7 @@ def built_SAC_Lagrangian_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=1.)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
@@ -543,4 +543,4 @@ def main(alg_name):
 
 
 if __name__ == '__main__':
-    main('SAC')
+    main('FSAC')

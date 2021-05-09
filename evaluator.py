@@ -347,6 +347,7 @@ class EvaluatorWithCost(object):
         episode_velo = sum(velo_list)/len(velo_list)
         max_velo = max(velo_list)
         min_velo = min(velo_list)
+        std_velo = np.std(velo_list)
         for key in info_list[0].keys():
             info_key = list(map(lambda x: x[key], info_list))
             mean_key = sum(info_key) / len(info_key)
@@ -357,6 +358,7 @@ class EvaluatorWithCost(object):
                               episode_return=episode_return,
                               episode_len=episode_len,
                               episode_velo_mean=episode_velo,
+                              episode_velo_std=std_velo,
                               episode_velo_max=max_velo,
                               episode_velo_min=min_velo))
         return info_dict
@@ -466,6 +468,13 @@ class EvaluatorWithCost(object):
             key_list.extend(['episode_cost', 'ep_cost_rate'])
             value_list.extend([episode_cost, ep_cost_rate])
 
+        elif self.args.env_id in ['Walker2d-v3','HalfCheetah-v3']:
+            episode_velo_mean = episode_info['episode_velo_mean']
+            episode_velo_std = episode_info['episode_velo_std']
+            episode_velo_max = episode_info['episode_velo_max']
+            episode_velo_min = episode_info['episode_velo_min']
+            key_list.extend(['episode_velo_mean', 'episode_velo_std', 'episode_velo_max', 'episode_velo_min'])
+            value_list.extend([episode_velo_mean, episode_velo_std, episode_velo_max, episode_velo_min])
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
