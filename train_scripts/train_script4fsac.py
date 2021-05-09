@@ -155,7 +155,7 @@ def built_FSAC_parser():
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
-        parser.add_argument('--target_entropy', type=float, default=-2)
+        parser.add_argument('--target_entropy', type=float, default=-6)
     parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 400000, 8e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
