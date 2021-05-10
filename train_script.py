@@ -100,7 +100,7 @@ def built_AMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=512)
+    parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -171,7 +171,7 @@ def built_parser(alg_name):
         args.state_ego_dim, args.state_track_dim, args.state_other_dim = env.ego_info_dim, env.per_tracking_info_dim, \
                                                                          env.per_veh_info_dim
         args.PI_in_dim = env.per_veh_info_dim
-        args.PI_out_dim = args.max_veh_num * env.per_veh_info_dim + 1
+        args.PI_out_dim = args.max_veh_num * env.per_veh_info_dim + 1 + 20
         args.obs_dim, args.act_dim = args.PI_out_dim + args.state_ego_dim + args.state_track_dim, act_space.shape[0]
         return args
 
