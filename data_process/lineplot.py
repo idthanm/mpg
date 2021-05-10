@@ -13,7 +13,7 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.1
+SMOOTHFACTOR = 0.6
 SMOOTHFACTOR2 = 3
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian']
@@ -58,10 +58,10 @@ def load_from_tf1_event(eval_dir, tag2plot):
     return data_in_one_run_of_one_alg
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['FSAC','SAC-Lagrangian', 'CPO', 'PPO-Lagrangian'] # 'SAC',
-    lbs = ['FSAC','SAC-Lagrangian',  'CPO', 'PPO-Lagrangian'] # 'SAC',
-    task = ['CarGoal']
+    lbs = ['FSAC','SAC-Lagrangian', 'CPO', 'PPO-Lagrangian'] # 'SAC',
+    task = ['PointGoal']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -81,51 +81,67 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             data2plot_dir = dir_str.format(alg, task)
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
-                if alg in txt_store_alg_list:
-                    eval_dir = data2plot_dir + '/' + dir
-                    print(eval_dir)
-                    df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
-                else:
-                    eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
-                    print(eval_dir)
-                    eval_file = os.path.join(eval_dir,
-                                             [file_name for file_name in os.listdir(eval_dir) if file_name.startswith('events')][0])
-                    eval_summarys = tf.data.TFRecordDataset([eval_file])
-                    data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
-                    data_in_one_run_of_one_alg.update({'iteration': []})
-                    for eval_summary in eval_summarys:
-                        event = event_pb2.Event.FromString(eval_summary.numpy())
-                        for v in event.summary.value:
-                            t = tf.make_ndarray(v.tensor)
-                            for tag in tag2plot:
-                                if tag == v.tag[11:]:
-                                    data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
-                                                                           if data_in_one_run_of_one_alg[tag] else float(t))
-                                    data_in_one_run_of_one_alg['iteration'].append(int(event.step))
-                    len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
-                    period = int(len1/len2)
-                    data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/10000. for i in range(len2)]
+                if not dir.startswith('skip'):
+                    if alg in txt_store_alg_list:
+                        eval_dir = data2plot_dir + '/' + dir
+                        print(eval_dir)
+                        df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
+                    else:
+                        eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
+                        print(eval_dir)
+                        eval_file = os.path.join(eval_dir,
+                                                 [file_name for file_name in os.listdir(eval_dir) if file_name.startswith('events')][0])
+                        eval_summarys = tf.data.TFRecordDataset([eval_file])
+                        data_in_one_run_of_one_alg = {key: [] for key in tag2plot}
+                        data_in_one_run_of_one_alg.update({'iteration': []})
+                        for eval_summary in eval_summarys:
+                            event = event_pb2.Event.FromString(eval_summary.numpy())
+                            for v in event.summary.value:
+                                t = tf.make_ndarray(v.tensor)
+                                for tag in tag2plot:
+                                    if task == 'CarGoal' and int(event.step) >= 2900000:
+                                        continue
+                                    if tag == v.tag[11:]:
+                                        data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
+                                                                               if data_in_one_run_of_one_alg[tag] else float(t))
+                                        if dir.startswith('conti'):
+                                            data_in_one_run_of_one_alg['iteration'].append(int(event.step + 1000000))
+                                        else:
+                                            data_in_one_run_of_one_alg['iteration'].append(int(event.step))
+                        len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
+                        period = int(len1/len2)
+                        data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/10000. for i in range(len2)]
 
-                    data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
-                    df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
-                df_list.append(df_in_one_run_of_one_alg)
+                        data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
+                        df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
+                        y = np.ones(SMOOTHFACTOR2)
+                        for tag in tag2plot:
+                            x = np.asarray(df_in_one_run_of_one_alg[tag])
+                            z = np.ones(len(x))
+                            smoothed_x = np.convolve(x, y, 'same') / np.convolve(z, y, 'same')
+                            df_in_one_run_of_one_alg[tag] = smoothed_x
+                    df_list.append(df_in_one_run_of_one_alg)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
         axes_size = [0.11, 0.11, 0.89, 0.89] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
-        sns.lineplot(x="iteration", y="episode_cost", hue="algorithm",
+        sns.lineplot(x="iteration", y=tag, hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette
                      )
         base = 40 if task == 'CarPush' else 100
-        basescore = sns.lineplot(x=[0., 300.], y=[base, base], linewidth=2, color='black', linestyle='--')
+        handles, labels = ax1.get_legend_handles_labels()
+        labels = lbs
+        if tag == 'episode_cost':
+            basescore = sns.lineplot(x=[0., 300.], y=[base, base], linewidth=2, color='black', linestyle='--')
+            ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper right',
+                       frameon=False, fontsize=fontsize)
+        else:
+            ax1.legend(handles=handles , labels=labels , loc='upper right', frameon=False, fontsize=fontsize)
         print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
         ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
-        handles, labels = ax1.get_legend_handles_labels()
-        labels = lbs
-        ax1.legend(handles=handles+[basescore.lines[-1]], labels=labels+['Constraint'], loc='upper right', frameon=False, fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
@@ -172,6 +188,7 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, nu
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
             exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/10000)
             exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'])
+            exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
             datasets.append(exp_data)
             data = datasets
