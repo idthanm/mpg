@@ -10,7 +10,7 @@
 import logging
 
 import numpy as np
-from gym.envs.user_defined.toyota_env_PI.dynamics_and_models import EnvironmentModel
+from gym.envs.user_defined.toyota_env_PI_fix.dynamics_and_models import EnvironmentModel
 
 from preprocessor import Preprocessor
 from utils.misc import TimerStat, args2envkwargs
@@ -63,9 +63,8 @@ class AMPCLearner(object):
         self.batch_data = {'batch_obs_ego': batch_data[0].astype(np.float32),
                            'batch_obs_other': batch_data[1].astype(np.float32),
                            'batch_veh_num': batch_data[2].astype(np.int32),
-                           'batch_veh_mode': batch_data[3],
-                           'batch_dones': batch_data[4].astype(np.float32),
-                           'batch_ref_index': batch_data[5].astype(np.int32)
+                           'batch_dones': batch_data[3].astype(np.float32),
+                           'batch_ref_index': batch_data[4].astype(np.int32)
                            }
 
     def get_weights(self):
@@ -84,11 +83,11 @@ class AMPCLearner(object):
         pf = init_pf * self.tf.pow(amplifier, self.tf.cast(ite//interval, self.tf.float32))
         return pf
 
-    def model_rollout_for_update(self, start_obses_ego, start_obses_other, start_veh_num, start_veh_mode, ite, mb_ref_index):
+    def model_rollout_for_update(self, start_obses_ego, start_obses_other, start_veh_num, ite, mb_ref_index):
         start_obses_ego = self.tf.tile(start_obses_ego, [self.M, 1])
         start_obses_other = self.tf.tile(start_obses_other, [self.M, 1])
 
-        self.model.reset(start_obses_ego, start_obses_other, start_veh_num, start_veh_mode, mb_ref_index)
+        self.model.reset(start_obses_ego, start_obses_other, start_veh_num, mb_ref_index)
 
         rewards_sum = self.tf.zeros((start_obses_ego.shape[0],))
         punish_terms_for_training_sum = self.tf.zeros((start_obses_ego.shape[0],))
@@ -107,9 +106,7 @@ class AMPCLearner(object):
             processed_obses = self.get_states(processed_obses_ego, processed_obses_other, start_veh_num, grad=False)
 
             actions, _ = self.policy_with_value.compute_action(processed_obses)
-
             obses_ego, obses_other, rewards, punish_terms_for_training, real_punish_term, veh2veh4real, veh2road4real = self.model.rollout_out(actions)
-
             rewards_sum += self.preprocessor.tf_process_rewards(rewards)
             punish_terms_for_training_sum += self.args.reward_scale * punish_terms_for_training
             real_punish_terms_sum += self.args.reward_scale * real_punish_term
@@ -133,24 +130,19 @@ class AMPCLearner(object):
         return obj_v_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss,\
                real_punish_term, veh2veh4real, veh2road4real, pf
 
-    # construct one graph for different dimension of inputs
-    # @tf.function(input_signature=[tf.TensorSpec(shape=(batch_size, state_ego_dim+state_track_dim), dtype=tf.float32),
-    #                               tf.TensorSpec(shape=(None, state_other_dim), dtype=tf.float32),
-    #                               tf.TensorSpec(shape=batch_size, dtype=tf.int32), tf.TensorSpec(shape=None, dtype=tf.string),
-    #                               tf.TensorSpec(shape=None, dtype=tf.int32), tf.TensorSpec(shape=batch_size, dtype=tf.int32)])
-    def forward_and_backward(self, mb_obs_ego, mb_obs_other, mb_veh_num, mb_veh_mode, ite, mb_ref_index):
+    @tf.function
+    def forward_and_backward(self, mb_obs_ego, mb_obs_other, mb_veh_num, ite, mb_ref_index):
         with self.tf.GradientTape(persistent=True) as tape:
             obj_v_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real, pf\
-                = self.model_rollout_for_update(mb_obs_ego, mb_obs_other, mb_veh_num, mb_veh_mode, ite, mb_ref_index)
+                = self.model_rollout_for_update(mb_obs_ego, mb_obs_other, mb_veh_num, ite, mb_ref_index)
 
         with self.tf.name_scope('policy_gradient') as scope:
             pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
         with self.tf.name_scope('obj_v_gradient') as scope:
             obj_v_grad = tape.gradient(obj_v_loss, self.policy_with_value.obj_v.trainable_weights)
             PI_net_grad = tape.gradient(obj_v_loss, self.policy_with_value.PI_net.trainable_weights)
-            print('obj_v_grad-----------------------------', obj_v_grad)
-            print('PI_net_grad-----------------------------', PI_net_grad)
+
         # with self.tf.name_scope('con_v_gradient') as scope:
         #     con_v_grad = tape.gradient(con_v_loss, self.policy_with_value.con_v.trainable_weights)
 
@@ -171,7 +163,6 @@ class AMPCLearner(object):
         mb_obs_ego = self.tf.constant(self.batch_data['batch_obs_ego'])
         mb_obs_other = self.tf.constant(self.batch_data['batch_obs_other'])
         mb_veh_num = self.tf.constant(self.batch_data['batch_veh_num'])
-        mb_veh_mode = self.tf.convert_to_tensor(self.batch_data['batch_veh_mode'], dtype=self.tf.string)
         iteration = self.tf.convert_to_tensor(iteration, self.tf.int32)
         mb_ref_index = self.tf.constant(self.batch_data['batch_ref_index'], self.tf.int32)
 
@@ -179,7 +170,7 @@ class AMPCLearner(object):
             pg_grad, obj_v_grad, PI_net_grad, obj_v_loss, obj_loss, \
             punish_term_for_training, punish_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real, pf =\
-                self.forward_and_backward(mb_obs_ego, mb_obs_other, mb_veh_num, mb_veh_mode, iteration, mb_ref_index)
+                self.forward_and_backward(mb_obs_ego, mb_obs_other, mb_veh_num, iteration, mb_ref_index)
 
             pg_grad, pg_grad_norm = self.tf.clip_by_global_norm(pg_grad, self.args.gradient_clip_norm)
             obj_v_grad, obj_v_grad_norm = self.tf.clip_by_global_norm(obj_v_grad, self.args.gradient_clip_norm)

@@ -46,8 +46,8 @@ class ReplayBuffer(object):
     def __len__(self):
         return len(self._storage)
 
-    def add(self, obs_ego_next, obs_others_next, veh_num_next, veh_mode_next, done, ref_index, weight):
-        data = (obs_ego_next, obs_others_next, veh_num_next, veh_mode_next, done, ref_index)
+    def add(self, obs_ego_next, obs_others_next, veh_num_next, done, ref_index, weight):
+        data = (obs_ego_next, obs_others_next, veh_num_next, done, ref_index)
         if self._next_idx >= len(self._storage):
             self._storage.append(data)
         else:
@@ -55,21 +55,19 @@ class ReplayBuffer(object):
         self._next_idx = (self._next_idx + 1) % self._maxsize
 
     def _encode_sample(self, idxes):
-        obses_ego_next, obses_other_next, vehs_num_next, vehs_mode_next, dones, ref_indexs = [], [], [], [], [], []
+        obses_ego_next, obses_other_next, vehs_num_next, dones, ref_indexs = [], [], [], [], []
         for i in idxes:
             data = self._storage[i]
-            obs_ego_next, obs_other_next, veh_num_next, veh_mode_next, done, ref_index = data
+            obs_ego_next, obs_other_next, veh_num_next, done, ref_index = data
             obses_ego_next.append(np.array(obs_ego_next, copy=False))
             obses_other_next.append(np.array(obs_other_next, copy=False))
             vehs_num_next.append(veh_num_next)
-            vehs_mode_next.append(veh_mode_next)
             dones.append(done)
             ref_indexs.append(ref_index)
         obses_others_next = np.concatenate(([obses_other_next[i] for i in range(len(obses_other_next))]), axis=0)
-        vehs_mode_next = np.concatenate(([vehs_mode_next[i] for i in range(len(vehs_mode_next))]), axis=0)
         # print(vehs_mode_next.shape, obses_others_next.shape, np.sum(np.array(vehs_num_next)))
 
-        return np.array(obses_ego_next), np.array(obses_others_next), np.array(vehs_num_next), vehs_mode_next, \
+        return np.array(obses_ego_next), np.array(obses_others_next), np.array(vehs_num_next), \
                np.array(dones), np.array(ref_indexs)
 
     def sample_idxes(self, batch_size):

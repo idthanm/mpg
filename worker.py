@@ -112,9 +112,7 @@ class OffPolicyWorker(object):
             obs_other_next = np.reshape(obs_tp1[self.args.state_ego_dim + self.args.state_track_dim:],
                                         (-1, self.args.state_other_dim))
             veh_num_next = info['veh_num']
-            veh_mode_next = np.reshape(np.array(info['veh_mode'], dtype=np.string_), [veh_num_next, -1])
-            # print(veh_mode_next, veh_mode_next.shape)
-            batch_data.append((obs_ego_next, obs_other_next, veh_num_next, veh_mode_next, self.done, info['ref_index']))
+            batch_data.append((obs_ego_next, obs_other_next, veh_num_next, self.done, info['ref_index']))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 
