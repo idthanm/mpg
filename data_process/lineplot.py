@@ -61,7 +61,7 @@ def help_func():
     tag2plot = ['episode_return']
     alg_list = ['FSAC','SAC-Lagrangian', 'CPO', 'PPO-Lagrangian'] # 'SAC',
     lbs = ['FSAC','SAC-Lagrangian', 'CPO', 'PPO-Lagrangian'] # 'SAC',
-    task = ['PointGoal']
+    task = ['CarGoal']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -99,8 +99,6 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             for v in event.summary.value:
                                 t = tf.make_ndarray(v.tensor)
                                 for tag in tag2plot:
-                                    if task == 'CarGoal' and int(event.step) >= 2900000:
-                                        continue
                                     if tag == v.tag[11:]:
                                         data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
                                                                                if data_in_one_run_of_one_alg[tag] else float(t))

@@ -42,15 +42,15 @@ class RunningMeanStd(object):
     def update_from_moments(self, batch_mean, batch_var, batch_count):
         self.mean, self.var, self.count = update_mean_var_count_from_moments(
             self.mean, self.var, self.count, batch_mean, batch_var, batch_count)
-        self.tf_mean.assign(tf.constant(self.mean))
-        self.tf_var.assign(tf.constant(self.var))
+        self.tf_mean.assign(tf.constant(self.mean, dtype=tf.float32))
+        self.tf_var.assign(tf.constant(self.var, dtype=tf.float32))
 
     def set_params(self, mean, var, count):
         self.mean = mean
         self.var = var
         self.count = count
-        self.tf_mean.assign(tf.constant(self.mean))
-        self.tf_var.assign(tf.constant(self.var))
+        self.tf_mean.assign(tf.constant(self.mean, dtype=tf.float32))
+        self.tf_var.assign(tf.constant(self.var, dtype=tf.float32))
 
     def get_params(self, ):
         return self.mean, self.var, self.count

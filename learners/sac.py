@@ -293,7 +293,7 @@ class SACLearnerWithCost(object):
                                   (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
 
-        processed_cost = self.batch_data['batch_velos']
+        processed_cost = self.preprocessor.tf_process_rewards(self.batch_data['batch_velos']).numpy()
         # target_QC_of_tp1 = processed_cost + self.args.cost_gamma * self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
         if self.args.double_QC:
             processed_cost = self.batch_data['batch_costs']
@@ -309,7 +309,7 @@ class SACLearnerWithCost(object):
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
-        processed_cost = self.batch_data['batch_velos']
+        processed_cost = self.preprocessor.tf_process_rewards(self.batch_data['batch_velos']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
 
         values_t = self.policy_with_value.compute_Q1(processed_obs, self.batch_data['batch_actions']).numpy()

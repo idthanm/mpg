@@ -296,10 +296,11 @@ class EvaluatorWithCost(object):
         velo_list = []
         qc_list = []
         lam_list = []
+        ep_discounted_cost = 0
         obs = self.env.reset()
         if render: self.env.render()
         if steps is not None:
-            for _ in range(steps):
+            for t in range(steps):
                 processed_obs = self.preprocessor.tf_process_obses(obs)
                 action = self.policy_with_value.compute_mode(processed_obs)
                 if self.args.demo:
@@ -318,6 +319,7 @@ class EvaluatorWithCost(object):
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 velo_list.append(velo)
+                ep_discounted_cost += self.args.cost_gamma ** t * velo
         else:
             while not done:
                 processed_obs = self.preprocessor.tf_process_obses(obs)
@@ -360,7 +362,8 @@ class EvaluatorWithCost(object):
                               episode_velo_mean=episode_velo,
                               episode_velo_std=std_velo,
                               episode_velo_max=max_velo,
-                              episode_velo_min=min_velo))
+                              episode_velo_min=min_velo,
+                              episode_cost=ep_discounted_cost))
         return info_dict
 
     def run_n_episodes(self, n):
@@ -473,8 +476,9 @@ class EvaluatorWithCost(object):
             episode_velo_std = episode_info['episode_velo_std']
             episode_velo_max = episode_info['episode_velo_max']
             episode_velo_min = episode_info['episode_velo_min']
-            key_list.extend(['episode_velo_mean', 'episode_velo_std', 'episode_velo_max', 'episode_velo_min'])
-            value_list.extend([episode_velo_mean, episode_velo_std, episode_velo_max, episode_velo_min])
+            episode_cost = episode_info['episode_cost']
+            key_list.extend(['episode_velo_mean', 'episode_velo_std', 'episode_velo_max', 'episode_velo_min','episode_cost'])
+            value_list.extend([episode_velo_mean, episode_velo_std, episode_velo_max, episode_velo_min, episode_cost])
         return dict(zip(key_list, value_list))
 
     def set_weights(self, weights):
@@ -537,7 +541,7 @@ def test_evaluator():
     evaluator.run_evaluation(3)
 
 def read_metrics():
-    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/FSAC/PointGoal/PointGoal2-2021-04-28-01-16-21/logs/tester/test-2021-05-04-01-26-19/n_metrics_list_ite3000000.npy'
+    metrics = np.load('/home/mahaitong/PycharmProjects/mpg/results/FSAC/v/v3-2021-05-10-17-02-05/logs/tester/test-2021-05-10-23-30-41/n_metrics_list_ite800000.npy'
                       , allow_pickle=True)
     print(metrics)
     ep_cost = []

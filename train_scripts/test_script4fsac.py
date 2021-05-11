@@ -29,7 +29,7 @@ from optimizer import OffPolicyAsyncOptimizer, SingleProcessOffPolicyOptimizer, 
 from policy import PolicyWithQs, PolicyWithMu
 from tester import Tester
 from trainer import Trainer
-from worker import OffPolicyWorker, OffPolicyWorkerWithCost
+from worker import  OffPolicyWorkerWithCost
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -37,7 +37,7 @@ logging.basicConfig(level=logging.INFO)
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 os.environ['OMP_NUM_THREADS'] = '1'
-NAME2WORKERCLS = dict([('OffPolicyWorker', OffPolicyWorker),
+NAME2WORKERCLS = dict([
                        ('OffPolicyWorkerWithCost', OffPolicyWorkerWithCost)])
 NAME2LEARNERCLS = dict([('MPG', MPGLearner),
                         ('AMPC', AMPCLearner),
@@ -68,18 +68,18 @@ def built_FSAC_parser():
     mode = parser.parse_args().mode
 
     if mode == 'testing':
-        test_dir = '../results/SAC/PointPush/PointPush1-2021-05-07-13-41-58'
+        test_dir = '../results/FSAC/v/v3-2021-05-10-17-02-05'
         params = json.loads(open(test_dir + '/config.json').read())
         time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
         test_log_dir = params['log_dir'] + '/tester/test-{}'.format(time_now)
         params.update(dict(test_dir=test_dir,
-                           test_iter_list=[3000000],
+                           test_iter_list=[800000],
                            test_log_dir=test_log_dir,
-                           num_eval_episode=50,
+                           num_eval_episode=5,
                            num_eval_agent=1,
                            eval_log_interval=1,
                            fixed_steps=1000,
-                           eval_render=False,
+                           eval_render=True,
                            demo=False))
         for key, val in params.items():
             parser.add_argument("-" + key, default=val)

@@ -448,7 +448,7 @@ class OffPolicyAsyncOptimizerWithCost(object):
                 if ppc_params and \
                         (self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize'):
                     learner.set_ppc_params.remote(ppc_params)
-                    self.local_worker.set_ppc_params(ppc_params)
+                    self.local_worker.set_ppc_params(ray.get(ppc_params))
                 if weights is None:
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
