@@ -504,8 +504,10 @@ class EvaluatorWithCost(object):
         if self.eval_times % self.args.eval_log_interval == 0:
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
+        over_cost_lim = mean_metric_dict['episode_cost'] > self.args.cost_lim
+        return over_cost_lim
 
-    def run_evaluation_demo(self, iteration):
+def run_evaluation_demo(self, iteration):
         with self.eval_timer:
             self.iteration = iteration
             if self.args.num_eval_agent == 1:
@@ -522,6 +524,7 @@ class EvaluatorWithCost(object):
         if self.eval_times % self.args.eval_log_interval == 0:
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
+
 
 
 def test_trained_model(model_dir, ppc_params_dir, iteration):
