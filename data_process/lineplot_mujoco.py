@@ -17,6 +17,7 @@ SMOOTHFACTOR = 0.3
 SMOOTHFACTOR2 = 3
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian']
+base_dict = dict(HalfCheetah=150)
 
 def load_from_event():
     tag2plot = ['episode_return']
@@ -59,9 +60,9 @@ def load_from_tf1_event(eval_dir, tag2plot):
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
-    lbs = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
-    task = ['PointButton']
+    alg_list = ['CPO','PPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['CPO','PPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -74,10 +75,11 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot, alg_list, task_list, lbs, palette, _, dir_str = help_func()
     df_dict = {}
     df_in_one_run_of_one_alg = {}
+    final_results = {}
     for task in task_list:
         df_list = []
         for alg in alg_list:
-
+            final_results.update({alg:[]})
             data2plot_dir = dir_str.format(alg, task)
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
@@ -86,6 +88,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         eval_dir = data2plot_dir + '/' + dir
                         print(eval_dir)
                         df_in_one_run_of_one_alg = get_datasets(eval_dir, tag2plot, alg=alg, num_run=num_run)
+                        tag = tag2plot[0]
                     else:
                         eval_dir = data2plot_dir + '/' + dir + '/logs/evaluator'
                         print(eval_dir)
@@ -128,25 +131,28 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             smoothed_x = np.convolve(x, y, 'same') / np.convolve(z, y, 'same')
                             df_in_one_run_of_one_alg[tag] = smoothed_x
                     df_list.append(df_in_one_run_of_one_alg)
+                    lendf = len(df_in_one_run_of_one_alg[tag])
+                    final_results[alg].append(df_in_one_run_of_one_alg[tag][lendf-1]) # TODO: consider conti if exists
+        dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
         axes_size = [0.11, 0.11, 0.89, 0.89] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
-        sns.lineplot(x="iteration", y=tag, hue="algorithm",
+        sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
                      data=total_dataframe, linewidth=2, palette=palette
                      )
-        base = 40 if task == 'CarPush' else 100
+        base = base_dict[task]
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
         if tag == 'episode_cost':
-            basescore = sns.lineplot(x=[0., 300.], y=[base, base], linewidth=2, color='black', linestyle='--')
+            basescore = sns.lineplot(x=[0., 100.], y=[base, base], linewidth=2, color='black', linestyle='--')
             ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper right',
                        frameon=False, fontsize=fontsize)
         else:
             ax1.legend(handles=handles , labels=labels , loc='upper right', frameon=False, fontsize=fontsize)
-        print(ax1.lines[0].get_data())
+        # print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
         ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
@@ -169,7 +175,6 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         #     results2print.update({alg: [mean, 2 * std]})
         #
         # print(results2print)
-
 
 def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, num_run=0):
     """
@@ -222,60 +227,9 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, nu
 
     return data.loc[:, slice_list]
 
-def load_from_txt(logdir='../results/CPO/PointGoal/pg1', tag=['episode_cost']):
-    data = get_datasets(logdir, tag, alg='CPO')
-    a = 1
-# def get_all_datasets(all_logdirs, legend=None, select=None, exclude=None):
-#     """
-#     For every entry in all_logdirs,
-#         1) check if the entry is a real directory and if it is,
-#            pull data from it;
-#
-#         2) if not, check to see if the entry is a prefix for a
-#            real directory, and pull data from that.
-#     """
-#     logdirs = []
-#     for logdir in all_logdirs:
-#         if osp.isdir(logdir) and logdir[-1]=='/':
-#             logdirs += [logdir]
-#         else:
-#             basedir = osp.dirname(logdir)
-#             fulldir = lambda x : osp.join(basedir, x)
-#             prefix = logdir.split('/')[-1]
-#             listdir= os.listdir(basedir)
-#             logdirs += sorted([fulldir(x) for x in listdir if prefix in x])
-#
-#     """
-#     Enforce selection rules, which check logdirs for certain substrings.
-#     Makes it easier to look at graphs from particular ablations, if you
-#     launch many jobs at once with similar names.
-#     """
-#     if select is not None:
-#         logdirs = [log for log in logdirs if all(x in log for x in select)]
-#     if exclude is not None:
-#         logdirs = [log for log in logdirs if all(not(x in log) for x in exclude)]
-#
-#     # Verify logdirs
-#     print('Plotting from...\n' + '='*DIV_LINE_WIDTH + '\n')
-#     for logdir in logdirs:
-#         print(logdir)
-#     print('\n' + '='*DIV_LINE_WIDTH)
-#
-#     # Make sure the legend is compatible with the logdirs
-#     assert not(legend) or (len(legend) == len(logdirs)), \
-#         "Must give a legend title for each set of experiments."
-#
-#     # Load data from logdirs
-#     data = []
-#     if legend:
-#         for log, leg in zip(logdirs, legend):
-#             data += get_datasets(log, leg)
-#     else:
-#         for log in logdirs:
-#             data += get_datasets(log)
-#     return data
-
-
+def dump_results(final_results_dict):
+    for alg in final_results_dict.keys():
+        print('alg: {}, mean {}, std {}'.format(alg, np.mean(final_results_dict[alg]), np.std(final_results_dict[alg])))
 
 if __name__ == '__main__':
     # env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
