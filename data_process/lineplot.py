@@ -58,10 +58,10 @@ def load_from_tf1_event(eval_dir, tag2plot):
     return data_in_one_run_of_one_alg
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
     lbs = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
-    task = ['PointGoal']
+    task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???

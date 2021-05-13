@@ -304,7 +304,7 @@ class SACLearnerWithCost(object):
         else:
             clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
 
-        return clipped_double_q_target, np.clip(clipped_double_qc_target, 0, np.inf)
+        return clipped_double_q_target, clipped_double_qc_target
 
     def compute_td_error(self):
         processed_obs = self.preprocessor.tf_process_obses(self.batch_data['batch_obs']).numpy()  # n_step*obs_dim

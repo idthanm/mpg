@@ -66,6 +66,7 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
+    parser.add_argument('--random_seed', type=int, default=4)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -94,12 +95,11 @@ def built_FSAC_parser():
     parser.add_argument('--buffer_type', type=str, default='cost')
     parser.add_argument('--optimizer_type', type=str, default='OffPolicyAsyncWithCost') # SingleProcessOffPolicy OffPolicyAsyncWithCost
     parser.add_argument('--off_policy', type=str, default=True)
-    parser.add_argument('--random_seed', type=int, default=4)
     parser.add_argument('--penalty_start', type=int, default=400000)
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='HalfCheetah-v3')
+    parser.add_argument('--env_id', default='Hopper-v3')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -111,7 +111,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=30.0)
+    parser.add_argument('--cost_lim', type=float, default=20.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -143,20 +143,20 @@ def built_FSAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[5e-5, 1000000, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[5e-5, 1000000, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 1000000, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, 1000000, 1e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[1.8e-5, 500000, 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[3e-6, 100000, 1e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 500000, 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 100000, 1e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
-        parser.add_argument('--target_entropy', type=float, default=-6)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[3e-5, 500000, 1e-6])
+        parser.add_argument('--target_entropy', type=float, default=-3)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[5e-5, 500000, 1e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -179,7 +179,7 @@ def built_FSAC_parser():
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=600000)
+    parser.add_argument('--max_iter', type=int, default=1000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
@@ -193,16 +193,17 @@ def built_FSAC_parser():
     # IO
     time_now = datetime.datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
     env_id = parser.parse_args().env_id
-    task = env_id.split('-')[1] if env_id.startswith('Safexp') else env_id.split('-')[0]
-    results_dir = '../results/FSAC/conti40{task}/{experiment}-{time}'.format(task=task[:-1],
+    task = env_id.split('-')[1][:-1] if env_id.startswith('Safexp') else env_id.split('-')[0]
+    results_dir = './results/FSAC/{task}/{experiment}-{time}-s{seed}'.format(task=task,
                                                                       experiment=task,
-                                                                      time=time_now)
+                                                                      time=time_now,
+                                                                      seed=parser.parse_args().random_seed)
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44')
-    parser.add_argument('--model_load_ite', type=int, default=400000)
-    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44')
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
+    parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
 

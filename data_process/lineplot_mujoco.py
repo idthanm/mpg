@@ -13,8 +13,9 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.3
+SMOOTHFACTOR = 1
 SMOOTHFACTOR2 = 3
+SMOOTHFACTOR3 = 7
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 base_dict = dict(HalfCheetah=150)
@@ -68,7 +69,7 @@ def help_func():
     # todo: CarPush: ???
     palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
-    dir_str = '../results/{}/{}' # .format(algo name) # /data2plot
+    dir_str = '../results/{}/{}/data2plot' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
 
 def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
@@ -83,7 +84,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             data2plot_dir = dir_str.format(alg, task)
             data2plot_dirs_list = dirs_dict_for_plot[alg] if dirs_dict_for_plot is not None else os.listdir(data2plot_dir)
             for num_run, dir in enumerate(data2plot_dirs_list):
-                if not dir.startswith('skip'):
+                if not (dir.startswith('skip')):
                     if alg in txt_store_alg_list:
                         eval_dir = data2plot_dir + '/' + dir
                         print(eval_dir)
@@ -101,8 +102,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             event = event_pb2.Event.FromString(eval_summary.numpy())
                             if dir.startswith('conti150'):
                                 step = int(event.step + 1500000)
-                            elif dir.startswith('conti'):
-                                step = int(event.step + 1000000)
+                            # elif dir.startswith('conti'):
+                            #     step = int(event.step + 1000000)
+                            elif dir.startswith('conti40'):
+                                step = int(event.step + 400000)
                             elif dir.startswith('short'):
                                 step = int(event.step / 7200) * 10000
                             else:
@@ -110,18 +113,29 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             if step <= 3000000:
                                 if dir.startswith('half') and step > 1500000:
                                     continue
-                                if dir.startswith('init') and step > 1000000:
+                                if dir.startswith('init40') and step > 400000:
                                     continue
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
-                                        if tag == v.tag[11:]:
-                                            data_in_one_run_of_one_alg[tag].append((1-SMOOTHFACTOR)*data_in_one_run_of_one_alg[tag][-1] + SMOOTHFACTOR*float(t)
-                                                                                   if data_in_one_run_of_one_alg[tag] else float(t))
+                                        if dir.startswith('velo') and tag == 'episode_cost' and v.tag[11:]=='episode_velo_mean':
+                                            print(t)
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t) / 1.69 * 149.0
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 1.69 * 149.0)
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        elif tag == v.tag[11:]:
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t)
+                                                if data_in_one_run_of_one_alg[tag] else float(t))
+
 
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
+                        print(period)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/10000. for i in range(len2)]
 
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
@@ -133,8 +147,9 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             smoothed_x = np.convolve(x, y, 'same') / np.convolve(z, y, 'same')
                             df_in_one_run_of_one_alg[tag] = smoothed_x
                     df_list.append(df_in_one_run_of_one_alg)
-                    lendf = len(df_in_one_run_of_one_alg[tag])
-                    final_results[alg].append(df_in_one_run_of_one_alg[tag][lendf-1]) # TODO: consider conti if exists
+                    lendf = len(df_in_one_run_of_one_alg[tag2plot[0]])
+                    if not dir.startswith('init'):
+                        final_results[alg].append(df_in_one_run_of_one_alg[tag2plot[0]][lendf-1]) # TODO: consider conti if exists
         dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
@@ -178,7 +193,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         #
         # print(results2print)
 
-def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, num_run=0):
+def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):
     """
     Recursively look through logdir for output files produced by
     spinup.logx.Logger.
