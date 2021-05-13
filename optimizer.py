@@ -92,8 +92,10 @@ class UpdateThread(threading.Thread):
             # except ValueError:
             #     self.grad = [tf.zeros_like(grad) for grad in self.grad]
             #     logger.info('Grad is nan!, zero it')
-
-            self.local_worker.apply_gradients(self.iteration, self.grad)
+            if self.ascent:
+                self.local_worker.apply_gradients(self.iteration, self.grad, ascent=True)
+            else:
+                self.local_worker.apply_gradients(self.iteration, self.grad, ascent=False)
 
         # log
         if self.iteration % self.args.log_interval == 0:
@@ -456,7 +458,7 @@ class OffPolicyAsyncOptimizerWithCost(object):
                     weights = ray.put(self.local_worker.get_weights())
                 learner.set_weights.remote(weights)
                 if self.update_thread.ascent:
-                    logger.info('Start dual ascent')
+                    # logger.info('Start dual ascent')
                     self.learn_tasks.add(learner, learner.compute_gradient.remote(samples[:-1], rb, samples[-1],
                                                                                     self.local_worker.iteration, ascent=True))
                 else:

@@ -200,9 +200,9 @@ def built_FSAC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44')
+    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44/models')
     parser.add_argument('--model_load_ite', type=int, default=400000)
-    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44')
+    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/HalfCheeta/HalfCheetah-2021-05-12-20-24-44/models')
 
     return parser.parse_args()
 

@@ -16,7 +16,7 @@ sns.set(style="darkgrid")
 SMOOTHFACTOR = 0.3
 SMOOTHFACTOR2 = 3
 DIV_LINE_WIDTH = 50
-txt_store_alg_list = ['CPO', 'PPO-Lagrangian']
+txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 base_dict = dict(HalfCheetah=150)
 
 def load_from_event():
@@ -59,9 +59,9 @@ def load_from_tf1_event(eval_dir, tag2plot):
     return data_in_one_run_of_one_alg
 
 def help_func():
-    tag2plot = ['episode_return']
-    alg_list = ['CPO','PPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['CPO','PPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    tag2plot = ['episode_cost']
+    alg_list = ['FSAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['FSAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
@@ -101,8 +101,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             event = event_pb2.Event.FromString(eval_summary.numpy())
                             if dir.startswith('conti150'):
                                 step = int(event.step + 1500000)
-                            if dir.startswith('conti'):
+                            elif dir.startswith('conti'):
                                 step = int(event.step + 1000000)
+                            elif dir.startswith('short'):
+                                step = int(event.step / 7200) * 10000
                             else:
                                 step = event.step
                             if step <= 3000000:

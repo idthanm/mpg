@@ -61,7 +61,7 @@ def help_func():
     tag2plot = ['episode_return']
     alg_list = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
     lbs = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',
-    task = ['PointButton']
+    task = ['PointGoal']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???

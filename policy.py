@@ -395,7 +395,7 @@ class PolicyWithMu(tf.Module):
                 self.target_models[i-len(self.models)].set_weights(weight)
 
     @tf.function
-    def apply_gradients(self, iteration, grads):
+    def apply_gradients(self, iteration, grads, ascent):
         if self.policy_only:
             policy_grad = grads
             self.policy_optimizer.apply_gradients(zip(policy_grad, self.policy.trainable_weights))
@@ -415,7 +415,7 @@ class PolicyWithMu(tf.Module):
                 self.QC1_optimizer.apply_gradients(zip(qc1_grad, self.QC1.trainable_weights))
                 if self.double_QC:
                     self.QC2_optimizer.apply_gradients(zip(qc2_grad, self.QC2.trainable_weights))
-                if iteration % self.dual_ascent_interval == 0 and self.constrained and iteration > self.penalty_start:
+                if iteration % self.dual_ascent_interval == 0 and self.constrained and ascent:
                     lam_grad = grads[4 * q_weights_len + policy_weights_len: 4 * q_weights_len + policy_weights_len + lam_weights_len]
                     self.Lam_optimizer.apply_gradients(zip(lam_grad, self.Lam.trainable_weights))
                 if iteration % self.delay_update == 0:
