@@ -338,7 +338,10 @@ class EvaluatorWithCost(object):
                 # print("qc: {}".format(qc_val.numpy()))
                 # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
-                velo = info[0].get('x_velocity')
+                if 'y_velocity' not in info.keys():
+                    velo = info[0].get('x_velocity', 0)
+                else:
+                    velo = np.sqrt(np.square(info[0].get('x_velocity', 0)) + np.square(info[0].get('y_velocity', 0)))
                 if render: self.env.render()
                 reward_list.append(reward[0])
                 info_list.append(info[0])
@@ -471,7 +474,7 @@ class EvaluatorWithCost(object):
             key_list.extend(['episode_cost', 'ep_cost_rate'])
             value_list.extend([episode_cost, ep_cost_rate])
 
-        elif self.args.env_id in ['Walker2d-v3','HalfCheetah-v3', 'Hopper-v3']:
+        elif self.args.env_id in ['Walker2d-v3','HalfCheetah-v3', 'Hopper-v3', 'Ant-v3']:
             episode_velo_mean = episode_info['episode_velo_mean']
             episode_velo_std = episode_info['episode_velo_std']
             episode_velo_max = episode_info['episode_velo_max']
