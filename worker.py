@@ -118,8 +118,8 @@ class OffPolicyWorkerWithCost(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy())
-            if 'y_velocity' not in info.keys():
-                velo = info[0].get('x_velocity', 0)
+            if 'y_velocity' not in info[0].keys():
+                velo = np.abs(info[0].get('x_velocity', 0))
             else:
                 velo = np.sqrt(np.square(info[0].get('x_velocity', 0)) + np.square(info[0].get('y_velocity', 0)))
             # self.sampled_costs += velo

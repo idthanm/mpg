@@ -66,7 +66,7 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
-    parser.add_argument('--random_seed', type=int, default=4)
+    parser.add_argument('--random_seed', type=int, default=2)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -201,9 +201,9 @@ def built_FSAC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/HalfCheetah/conti40HalfCheetah-2021-05-13-08-05-26/models')
-    parser.add_argument('--model_load_ite', type=int, default=600000)
-    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/HalfCheetah/conti40HalfCheetah-2021-05-13-08-05-26/models')
+    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/HalfCheetah/data2plot/HalfCheetah-2021-05-11-22-44-37/models')
+    parser.add_argument('--model_load_ite', type=int, default=1000000)
+    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/HalfCheetah/data2plot/HalfCheetah-2021-05-11-22-44-37/models')
 
     return parser.parse_args()
 

@@ -338,7 +338,7 @@ class EvaluatorWithCost(object):
                 # print("qc: {}".format(qc_val.numpy()))
                 # print("lam: {}".format(lam.numpy()))
                 obs, reward, done, info = self.env.step(action.numpy())
-                if 'y_velocity' not in info.keys():
+                if 'y_velocity' not in info[0].keys():
                     velo = info[0].get('x_velocity', 0)
                 else:
                     velo = np.sqrt(np.square(info[0].get('x_velocity', 0)) + np.square(info[0].get('y_velocity', 0)))
