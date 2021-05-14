@@ -85,7 +85,12 @@ class OffPolicyWorkerWithCost(object):
 
     def apply_gradients(self, iteration, grads, ascent):
         self.iteration = iteration
-        self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads, ascent=ascent)
+        qc_grad, lam_grad = self.policy_with_value.apply_gradients(self.tf.constant(iteration, dtype=self.tf.int32), grads, ascent=ascent)
+        return qc_grad, lam_grad
+
+    def apply_ascent_gradients(self, iteration, qc_grad, lam_grad):
+        self.iteration = iteration
+        self.policy_with_value.apply_ascent_gradients(self.tf.constant(iteration, dtype=self.tf.int32), qc_grad, lam_grad)
 
     def get_ppc_params(self):
         return self.preprocessor.get_params()
