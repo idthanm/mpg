@@ -99,7 +99,7 @@ def built_FSAC_parser():
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='Walker2d-v3')
+    parser.add_argument('--env_id', default='Hopper-v3')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -111,7 +111,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=20.0)
+    parser.add_argument('--cost_lim', type=float, default=30.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -143,20 +143,20 @@ def built_FSAC_parser():
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
     parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 3000000, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, 3000000, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 1000000, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, 1000000, 1e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
     parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1500000, 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 500000, 1e-6])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 500000, 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[5e-6, 150000, 1e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
-        parser.add_argument('--target_entropy', type=float, default=-6)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[5e-5, 1500000, 1e-6])
+        parser.add_argument('--target_entropy', type=float, default=-3)
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[5e-5, 500000, 1e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
