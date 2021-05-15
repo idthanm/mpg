@@ -474,7 +474,7 @@ class EvaluatorWithCost(object):
             key_list.extend(['episode_cost', 'ep_cost_rate'])
             value_list.extend([episode_cost, ep_cost_rate])
 
-        elif self.args.env_id in ['Walker2d-v3','HalfCheetah-v3', 'Hopper-v3', 'Ant-v3']:
+        elif self.args.env_id in ['Walker2d-v3','HalfCheetah-v3', 'Hopper-v3', 'Ant-v3', 'Humanoid-v3']:
             episode_velo_mean = episode_info['episode_velo_mean']
             episode_velo_std = episode_info['episode_velo_std']
             episode_velo_max = episode_info['episode_velo_max']

@@ -86,7 +86,7 @@ class UpdateThread(threading.Thread):
                     self.grad, self.learner_stats = self.inqueue.get(timeout=30)
                     self.grad_reuse = 0
         # apply grad
-        print(self.iteration)
+        # print(self.iteration)
         with self.grad_apply_timer:
             # try:
             #     judge_is_nan(self.grad)
@@ -97,7 +97,7 @@ class UpdateThread(threading.Thread):
 
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad, ascent=True)
             if self.ascent:
-                print('apply ascent cstr')
+                #print('apply ascent cstr')
                 self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
             # else:
             #     print('apply uncstr')

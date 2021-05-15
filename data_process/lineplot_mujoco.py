@@ -19,12 +19,14 @@ SMOOTHFACTOR3 = 7
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 base_dict = dict(HalfCheetah=150)
+fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
+                   ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
 
 
 def help_func():
     tag2plot = ['episode_return']
     alg_list = ['FSAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['FSAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['FAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
@@ -68,6 +70,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 step = int(event.step + 1000000)
                             elif dir.startswith('conti40'):
                                 step = int(event.step + 400000)
+                            elif dir.startswith('conti240'):
+                                step = int(event.step + 2400000)
                             elif dir.startswith('short'):
                                 step = int(event.step / 7200) * 10000
                             else:
@@ -76,6 +80,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 if dir.startswith('half') and step > 1500000:
                                     continue
                                 if dir.startswith('init40') and step > 400000:
+                                    continue
+                                if dir.startswith('init100') and step > 2400000:
                                     continue
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
@@ -108,8 +114,11 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             df_in_one_run_of_one_alg[tag] = smoothed_x
                     df_list.append(df_in_one_run_of_one_alg)
                     lendf = len(df_in_one_run_of_one_alg[tag2plot[0]])
-                    if not (dir.startswith('init40') or dir.startswith('velo') or dir.startswith('conti40')):
-                        final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
+                    if alg == 'FSAC':
+                        if dir in fsac_final_list:
+                            final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
+                    else:
+                        final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
         dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
