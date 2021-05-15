@@ -25,13 +25,13 @@ fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCh
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['FSAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['FAC','CPO','PPO-Lagrangian','TRPO-Lagrangian'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FSAC',] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FAC'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
-    palette = "bright"
+    palette = "dark"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}/data2plot' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
@@ -102,7 +102,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
-                        data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/10000. for i in range(len2)]
+                        data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
 
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
                         df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
@@ -119,10 +119,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
                     else:
                         final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
-        dump_results(final_results)
+        compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
-        axes_size = [0.11, 0.11, 0.89, 0.89] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+        axes_size = [0.11, 0.11, 0.85, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
@@ -137,10 +137,14 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper right',
                        frameon=False, fontsize=fontsize)
         else:
-            ax1.legend(handles=handles , labels=labels , loc='upper right', frameon=False, fontsize=fontsize)
+            ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=4)
         # print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
-        ax1.set_xlabel("Iteration [x10000]", fontsize=fontsize)
+        ax1.set_xlabel("Million Iteration", fontsize=fontsize)
+        print(compare_dict)
+        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over TRPO-L, CPO, PPO-L'\
+            .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
+        ax1.set_title(title, fontsize=fontsize)
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
@@ -184,7 +188,7 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
             performance = 'AverageTestEpRet' if 'AverageTestEpRet' in exp_data else 'AverageEpRet'
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
-            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/10000)
+            exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000)
             exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'])
             exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
@@ -214,8 +218,11 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
     return data.loc[:, slice_list]
 
 def dump_results(final_results_dict):
+    compare_dict = {}
     for alg in final_results_dict.keys():
         print('alg: {}, mean {}, std {}'.format(alg, np.mean(final_results_dict[alg]), np.std(final_results_dict[alg])))
+        compare_dict.update({alg:(np.mean(final_results_dict['FSAC'])-np.mean(final_results_dict[alg]))/np.mean(final_results_dict[alg])})
+    return compare_dict
 
 if __name__ == '__main__':
     # env = 'inverted_pendulum_env'  # inverted_pendulum_env path_tracking_env
