@@ -18,13 +18,13 @@ SMOOTHFACTOR2 = 3
 SMOOTHFACTOR3 = 7
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-base_dict = dict(HalfCheetah=150)
+base_dict = dict(HalfCheetah=150, Ant=150)
 fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
                    ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
-
+ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FSAC',] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FAC'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
@@ -92,6 +92,12 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                                     -1] + SMOOTHFACTOR * float(t) / 1.69 * 149.0
                                                 if data_in_one_run_of_one_alg[tag] else float(t)/ 1.69 * 149.0)
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        elif dir.startswith('over') and tag == 'episode_cost' and v.tag[11:]=='episode_cost':
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t) / 240.0 * 149.0
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 240.0 * 149.0)
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
                                         elif tag == v.tag[11:]:
                                             data_in_one_run_of_one_alg[tag].append(
                                                 (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
@@ -114,7 +120,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                             df_in_one_run_of_one_alg[tag] = smoothed_x
                     df_list.append(df_in_one_run_of_one_alg)
                     lendf = len(df_in_one_run_of_one_alg[tag2plot[0]])
-                    if alg == 'FSAC':
+                    if alg == 'FSAC' and task == 'HalfCheetah':
                         if dir in fsac_final_list:
                             final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
                     else:
@@ -122,7 +128,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
-        axes_size = [0.11, 0.11, 0.85, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+        axes_size = [0.15, 0.11, 0.8, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
@@ -133,11 +139,11 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
         if tag == 'episode_cost':
-            basescore = sns.lineplot(x=[0., 300.], y=[base, base], linewidth=2, color='black', linestyle='--')
+            basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--')
             ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper right',
                        frameon=False, fontsize=fontsize)
         else:
-            ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=4)
+            ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=1)
         # print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
@@ -145,6 +151,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over TRPO-L, CPO, PPO-L'\
             .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
         ax1.set_title(title, fontsize=fontsize)
+        if task in ylim_dict[tag]:
+            ax1.set_ylim(*ylim_dict[tag][task])
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
