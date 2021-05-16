@@ -27,7 +27,7 @@ def help_func():
     tag2plot = ['episode_cost']
     alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FSAC',] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FAC'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['HalfCheetah']
+    task = ['Ant']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -83,6 +83,10 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                     continue
                                 if dir.startswith('init100') and step > 2400000:
                                     continue
+                                if dir.startswith('init150') and step > 1500000:
+                                    continue
+                                if dir.startswith('init240') and step > 2400000:
+                                    continue
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
@@ -124,7 +128,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         if dir in fsac_final_list:
                             final_results[alg]+= list(df_in_one_run_of_one_alg[tag2plot[0]][lendf-21: lendf-1]) # TODO: consider conti if exists
                     else:
-                        final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
+                        if not dir.startswith('init'):
+                            final_results[alg] += list(df_in_one_run_of_one_alg[tag2plot[0]][lendf - 21: lendf - 1])
         compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
