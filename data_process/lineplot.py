@@ -13,17 +13,18 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.3
-SMOOTHFACTOR2 = 10
+SMOOTHFACTOR = 0.8
+SMOOTHFACTOR2 = 20
+SMOOTHFACTOR3 = 10
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-15, 28]},
-             'episode_cost':{'CarGoal': [0, 200],'PointButton': [0, 150]}} # {'CarGoal': [-5, 25]}
+ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-15, 33]},
+             'episode_cost':{'CarGoal': [0, 280],'PointButton': [20, 160]}} # {'CarGoal': [-5, 25]}
 
 def help_func():
     tag2plot = ['episode_cost']
-    alg_list = ['FSAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
-    lbs = ['FAC', 'CPO', 'PPO-Lagrangian'] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    alg_list = [ 'CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC',] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    lbs = [ 'CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FAC',] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
     task = ['PointButton']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
@@ -33,7 +34,7 @@ def help_func():
     dir_str = '../results/{}/{}' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
 
-def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=False):
+def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=True):
     tag2plot, alg_list, task_list, lbs, palette, _, dir_str = help_func()
     df_dict = {}
     df_in_one_run_of_one_alg = {}
@@ -103,19 +104,19 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=False):
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
         sns.lineplot(x="iteration", y=tag, hue="algorithm",
-                     data=total_dataframe, linewidth=2, palette=palette, legend=False
+                     data=total_dataframe, linewidth=2, palette=palette
                      )
         base = 40 if task == 'PointGoal' else 100
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
         if tag == 'episode_cost':
-            basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--', legend=False)
+            basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--')
             if legend:
-                ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper right',
+                ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='lower right',
                        frameon=False, fontsize=fontsize)
         else:
             if legend:
-                ax1.legend(handles=handles , labels=labels , loc='upper right', frameon=False, fontsize=fontsize)
+                ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize)
         # print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
@@ -148,7 +149,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=False):
         # print(results2print)
 
 
-def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR2, num_run=0):
+def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, num_run=0):
     """
     Recursively look through logdir for output files produced by
     spinup.logx.Logger.
