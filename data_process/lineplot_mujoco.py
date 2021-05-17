@@ -24,7 +24,7 @@ fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCh
 ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FSAC',] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['CPO','PPO-Lagrangian','TRPO-Lagrangian', 'FAC'] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['Ant']

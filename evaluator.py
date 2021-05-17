@@ -346,6 +346,8 @@ class EvaluatorWithCost(object):
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 velo_list.append(velo)
+                t = len(reward_list) - 1
+                ep_discounted_cost += self.args.cost_gamma ** t * velo
         episode_return = sum(reward_list)
         episode_len = len(reward_list)
         info_dict = dict()

@@ -111,7 +111,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=10.0)
+    parser.add_argument('--cost_lim', type=float, default=20.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -174,8 +174,8 @@ def built_FSAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.1)
-    parser.add_argument('--rew_shift', type=float, default=-1.)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
+    parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)

@@ -279,7 +279,7 @@ class SACLearnerWithCost(object):
     def compute_clipped_double_q_target(self):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
-        dones = self.batch_data['batch_dones'].numpy()
+        dones = self.batch_data['batch_dones']
 
         act_tp1, logp_tp1 = self.policy_with_value.compute_action(processed_obs_tp1)
 
