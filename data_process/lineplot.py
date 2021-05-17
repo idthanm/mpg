@@ -19,13 +19,13 @@ SMOOTHFACTOR3 = 10
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-15, 33]},
-             'episode_cost':{'CarGoal': [0, 280],'PointButton': [20, 160]}} # {'CarGoal': [-5, 25]}
+             'episode_cost':{'CarGoal': [0, 28],'PointButton': [2, 16]}} # {'CarGoal': [-5, 25]}
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = [ 'FSAC','CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
     lbs = [ 'FAC','CPO', 'PPO-L', 'TRPO-L', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
-    task = ['CarGoal']
+    task = ['PointButton']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -83,6 +83,9 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
+                        if 'episode_cost' in data_in_one_run_of_one_alg.keys():
+                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg[
+                                                                             'episode_cost']) / 10
 
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
                         df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
@@ -112,7 +115,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
                          data=total_dataframe, linewidth=2, palette=palette
                          )
-        base = 40 if task == 'PointGoal' else 100
+        base = 4 if task == 'PointGoal' else 10
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
         if tag == 'episode_cost':
@@ -129,7 +132,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         print(compare_dict)
         # title = 'Episode Return {} \n {:+.0%} {:+.0%} {:+.0%}\n over TRPO-L, CPO, PPO-L'\
         #     .format(task, compare_dict['TRPO-Lagrangian'], compare_dict['CPO'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
-        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost ({})'.format(task)
+        title = 'Reward ({})'.format(task) if tag == 'episode_return' else 'Cost Rate (%) ({})'.format(task)
         if task in ylim_dict[tag]:
             ax1.set_ylim(*ylim_dict[tag][task])
         ax1.set_title(title, fontsize=fontsize)
@@ -178,7 +181,7 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
             exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000)
-            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'])
+            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'] / 10)
             exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
             datasets.append(exp_data)

@@ -18,7 +18,7 @@ SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
-base_dict = dict(HalfCheetah=150, Ant=150)
+base_dict = dict(HalfCheetah=1.5, Ant=1.5)
 fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
                    ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
 ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
@@ -119,7 +119,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
-
+                        if 'episode_cost' in data_in_one_run_of_one_alg.keys():
+                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg['episode_cost']) / 100
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
                         df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
                         y = np.ones(SMOOTHFACTOR2)
@@ -168,7 +169,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
         title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, TRPO-L, PPO-L'\
-            .format(task, compare_dict['CPO'], compare_dict['TRPO-Lagrangian'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Episode Cost'
+            .format(task, compare_dict['CPO'], compare_dict['TRPO-Lagrangian'], compare_dict['PPO-Lagrangian']) if tag == 'episode_return' else 'Speed'
         ax1.set_title(title, fontsize=fontsize)
         if task in ylim_dict[tag]:
             ax1.set_ylim(*ylim_dict[tag][task])
@@ -216,7 +217,7 @@ def get_datasets(logdir, tag2plot, alg, condition=None, smooth=SMOOTHFACTOR3, nu
             exp_data.insert(len(exp_data.columns),'Performance',exp_data[performance])
             exp_data.insert(len(exp_data.columns),'algorithm',alg)
             exp_data.insert(len(exp_data.columns), 'iteration', exp_data['TotalEnvInteracts']/1000000)
-            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost'])
+            exp_data.insert(len(exp_data.columns), 'episode_cost', exp_data['AverageEpCost']/100)
             exp_data.insert(len(exp_data.columns), 'episode_return', exp_data['AverageEpRet'])
             exp_data.insert(len(exp_data.columns), 'num_run', num_run)
             datasets.append(exp_data)
