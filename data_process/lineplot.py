@@ -22,10 +22,10 @@ ylim_dict = {'episode_return':{'CarGoal': [-5, 25],'PointButton': [-15, 33]},
              'episode_cost':{'CarGoal': [0, 280],'PointButton': [20, 160]}} # {'CarGoal': [-5, 25]}
 
 def help_func():
-    tag2plot = ['episode_cost']
-    alg_list = [ 'CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FSAC',] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
-    lbs = [ 'CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', 'FAC',] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
-    task = ['PointButton']
+    tag2plot = ['episode_return']
+    alg_list = [ 'FSAC','CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    lbs = [ 'FAC','CPO', 'PPO-L', 'TRPO-L', ] # 'SAC','SAC-Lagrangian',, 'TRPO-Lagrangian'
+    task = ['CarGoal']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -34,7 +34,7 @@ def help_func():
     dir_str = '../results/{}/{}' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
 
-def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=True):
+def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
     tag2plot, alg_list, task_list, lbs, palette, _, dir_str = help_func()
     df_dict = {}
     df_in_one_run_of_one_alg = {}
@@ -103,9 +103,15 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None, legend=True):
         fontsize = 16
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
-        sns.lineplot(x="iteration", y=tag, hue="algorithm",
-                     data=total_dataframe, linewidth=2, palette=palette
-                     )
+        legend = True if task == 'CarGoal' and tag == 'episode_cost' else False
+        if not legend:
+            sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
+                         data=total_dataframe, linewidth=2, palette=palette, legend=False
+                         )
+        else:
+            sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
+                         data=total_dataframe, linewidth=2, palette=palette
+                         )
         base = 40 if task == 'PointGoal' else 100
         handles, labels = ax1.get_legend_handles_labels()
         labels = lbs
