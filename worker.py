@@ -183,3 +183,15 @@ class OffPolicyWorkerWithCost(object):
     def random_sample_with_count(self):
         batch_data = self.sample()
         return batch_data, len(batch_data)
+
+
+def try_worker():
+    from train_script4fsac_walker import built_parser
+    from policy import PolicyWithMu
+
+    args = built_parser('FSAC')
+    worker = OffPolicyWorkerWithCost(PolicyWithMu,args.env_id, args, 0)
+    worker.sample()
+
+if __name__ == '__main__':
+    try_worker()
