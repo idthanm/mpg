@@ -175,7 +175,7 @@ def built_FSAC_parser():
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
     parser.add_argument('--rew_scale', type=float, default=0.1)
-    parser.add_argument('--rew_shift', type=float, default=0.)
+    parser.add_argument('--rew_shift', type=float, default=-1.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
@@ -214,7 +214,7 @@ def built_parser(alg_name):
     env = gym.make(args.env_id) #  **vars(args)
     args.obs_dim, args.act_dim = int(env.observation_space.shape[0]), int(env.action_space.shape[0])
     args.obs_scale = [1.] * args.obs_dim
-    args.target_entropy = -1 * args.act_dim
+    # args.target_entropy = -1 * args.act_dim
     return args
 
 def main(alg_name):

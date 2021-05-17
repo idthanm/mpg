@@ -279,6 +279,7 @@ class SACLearnerWithCost(object):
     def compute_clipped_double_q_target(self):
         processed_rewards = self.preprocessor.tf_process_rewards(self.batch_data['batch_rewards']).numpy()
         processed_obs_tp1 = self.preprocessor.tf_process_obses(self.batch_data['batch_obs_tp1']).numpy()
+        dones = self.batch_data['dones'].numpy()
 
         act_tp1, logp_tp1 = self.policy_with_value.compute_action(processed_obs_tp1)
 
@@ -289,7 +290,7 @@ class SACLearnerWithCost(object):
 
         alpha = self.tf.exp(self.policy_with_value.log_alpha).numpy() if self.args.alpha == 'auto' else self.args.alpha
 
-        clipped_double_q_target = processed_rewards + self.args.gamma * \
+        clipped_double_q_target = processed_rewards + (1-dones) * self.args.gamma * \
                                   (np.minimum(target_Q1_of_tp1, target_Q2_of_tp1)-alpha*logp_tp1.numpy())
 
 
@@ -299,7 +300,7 @@ class SACLearnerWithCost(object):
             processed_cost = self.batch_data['batch_costs']
             target_QC1_of_tp1 = self.policy_with_value.compute_QC1_target(processed_obs_tp1, act_tp1).numpy()
             target_QC2_of_tp1 = self.policy_with_value.compute_QC2_target(processed_obs_tp1, act_tp1).numpy()
-            clipped_double_qc_target = processed_cost + self.args.cost_gamma * \
+            clipped_double_qc_target = processed_cost + (1-dones) * self.args.cost_gamma * \
                                        (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
         else:
             clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
