@@ -429,10 +429,10 @@ class OffPolicyAsyncOptimizerWithCost(object):
                         weights = ray.put(self.local_worker.get_weights())
                     worker.set_weights.remote(weights)
                     self.steps_since_update[worker] = 0
-                if random.random() > 0.8 and (not self.update_thread.ascent):
-                    self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
-                else:
-                    self.sample_tasks.add(worker, worker.sample_with_count.remote())
+                # if random.random() > 0.8 and (not self.update_thread.ascent):
+                #     self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
+                # else:
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
 
         # replay
         with self.timers["replay_timer"]:
