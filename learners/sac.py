@@ -303,7 +303,7 @@ class SACLearnerWithCost(object):
             clipped_double_qc_target = processed_cost + (1-dones) * self.args.cost_gamma * \
                                        (np.maximum(target_QC1_of_tp1, target_QC2_of_tp1))
         else:
-            clipped_double_qc_target = processed_cost + self.args.cost_gamma * target_QC1_of_tp1
+            clipped_double_qc_target = processed_cost + (1-dones) * self.args.cost_gamma * target_QC1_of_tp1
 
         return clipped_double_q_target, clipped_double_qc_target
 
