@@ -353,7 +353,7 @@ class OffPolicyAsyncOptimizerWithCost(object):
                 sample_batch, count = ray.get(objID)
                 random.choice(self.replay_buffers).add_batch.remote(sample_batch)
                 self.num_sampled_steps += count
-                self.sample_tasks.add(worker, worker.random_sample_with_count.remote())
+                self.sample_tasks.add(worker, worker.sample_with_count.remote())
         logger.info('end filling the replay')
 
         self.replay_tasks = TaskPool()
