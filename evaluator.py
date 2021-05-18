@@ -343,7 +343,6 @@ class EvaluatorWithCost(object):
                 else:
                     velo = np.sqrt(np.square(info[0].get('x_velocity', 0)) + np.square(info[0].get('y_velocity', 0)))
                 if render: self.env.render()
-                print(velo)
                 reward_list.append(reward[0])
                 info_list.append(info[0])
                 velo_list.append(velo)

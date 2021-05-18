@@ -383,8 +383,8 @@ class PolicyWithMu(tf.Module):
         optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
         ckpt = self.tf.train.Checkpoint(**dict(model_pairs + target_model_pairs + optimizer_pairs))
         ckpt.restore(load_dir + '/ckpt_ite' + str(iteration) + '-1')
-        self.QC1.set_weights(self.init_qc_weights)
-        self.QC1_target.set_weights(self.init_qc_weights)
+        # self.QC1.set_weights(self.init_qc_weights)
+        # self.QC1_target.set_weights(self.init_qc_weights)
 
     def get_weights(self):
         return [model.get_weights() for model in self.models] + \
