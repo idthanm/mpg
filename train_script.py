@@ -171,7 +171,7 @@ def built_parser(alg_name):
         args.state_ego_dim, args.state_track_dim, args.state_other_dim = env.ego_info_dim, env.per_tracking_info_dim, \
                                                                          env.per_veh_info_dim
         args.PI_in_dim = env.per_veh_info_dim
-        args.PI_out_dim = args.max_veh_num * env.per_veh_info_dim + 1 + 20
+        args.PI_out_dim = args.max_veh_num * env.per_veh_info_dim + 1
         args.obs_dim, args.act_dim = args.PI_out_dim + args.state_ego_dim + args.state_track_dim, act_space.shape[0]
         return args
 

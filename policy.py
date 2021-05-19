@@ -39,7 +39,7 @@ class Policy4Toyota(tf.Module):
         self.policy_optimizer = self.tf.keras.optimizers.Adam(policy_lr_schedule, name='adam_opt')
 
         self.obj_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='obj_v',
-                                     output_activation='relu')
+                                     output_activation='softplus')
         # self.con_v = value_model_cls(obs_dim, n_hiddens, n_units, hidden_activation, 1, name='con_v')
 
         obj_value_lr_schedule = PolynomialDecay(*self.args.value_lr_schedule)
