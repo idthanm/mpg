@@ -66,7 +66,7 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
-    parser.add_argument('--random_seed', type=int, default=2)
+    parser.add_argument('--random_seed', type=int, default=1)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -151,7 +151,7 @@ def built_FSAC_parser():
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
     parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1500000, 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[3e-6, 500000, 1e-7])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[3e-5, 500000, 1e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':

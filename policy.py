@@ -309,7 +309,7 @@ class PolicyWithMu(tf.Module):
                                           value_hidden_activation, 1, name='QC1_target')
         self.QC1_target.set_weights(self.QC1.get_weights())
         self.QC1_optimizer = self.tf.keras.optimizers.Adam(cost_value_lr, name='QC1_adam_opt')
-        self.init_qc_weights = self.QC1.get_weights()
+
 
         if self.double_QC:
             self.QC2 = value_model_cls(obs_dim + act_dim, value_num_hidden_layers, value_num_hidden_units,
@@ -325,7 +325,8 @@ class PolicyWithMu(tf.Module):
             lam_lr = PolynomialDecay(*lam_lr_schedule)
             self.Lam = value_model_cls(obs_dim, value_num_hidden_layers, value_num_hidden_units,
                                        value_hidden_activation, 1,
-                                       name='Lam', output_activation='softplus', output_bias=-10.)
+                                       name='Lam', output_activation='softplus', output_bias=-3.)
+            self.init_lam_weights = self.Lam.get_weights()
             self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
         else:
             lam_lr = 3e-4
@@ -383,7 +384,7 @@ class PolicyWithMu(tf.Module):
         optimizer_pairs = [(optimizer._name, optimizer) for optimizer in self.optimizers]
         ckpt = self.tf.train.Checkpoint(**dict(model_pairs + target_model_pairs + optimizer_pairs))
         ckpt.restore(load_dir + '/ckpt_ite' + str(iteration) + '-1')
-        # self.QC1.set_weights(self.init_qc_weights)
+        self.Lam.set_weights(self.init_lam_weights)
         # self.QC1_target.set_weights(self.init_qc_weights)
 
     def get_weights(self):
