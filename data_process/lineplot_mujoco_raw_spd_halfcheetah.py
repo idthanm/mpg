@@ -26,7 +26,7 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{
 
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['FSAC', 'CPO','PPO-Lagrangian','TRPO-Lagrangian', ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['FAC','CPO','PPO-L','TRPO-L',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']

@@ -26,10 +26,10 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':0,'Walker2d':0,},'episo
 
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = ['FSAC', 'CPO','PPO-Lagrangian','TRPO-Lagrangian', ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['FAC','CPO','PPO-L','TRPO-L',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['Walker2d']
+    task = ['Ant']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -121,7 +121,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                                     -1] + SMOOTHFACTOR * float(t)
                                                 if data_in_one_run_of_one_alg[tag] else float(t))
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
-                                        elif tag ==  v.tag[11:] :
+                                        elif tag == 'episode_return' and v.tag[11:]=='episode_return':
                                             data_in_one_run_of_one_alg[tag].append(
                                                 (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
                                                     -1] + SMOOTHFACTOR * float(t)
