@@ -13,7 +13,7 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.335 # 1 3 7 halfcheetah
+SMOOTHFACTOR = 0.135 # 1 3 7 halfcheetah
 SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
@@ -102,7 +102,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                                     -1] + SMOOTHFACTOR * float(t)
                                                 if data_in_one_run_of_one_alg[tag] else float(t))
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
-                                        elif tag ==  v.tag[11:] :
+                                        elif tag ==  'episode_return' and v.tag[11:] == 'episode_return' :
                                             data_in_one_run_of_one_alg[tag].append(
                                                 (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
                                                     -1] + SMOOTHFACTOR * float(t)

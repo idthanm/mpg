@@ -22,7 +22,7 @@ base_dict = dict(HalfCheetah=1.5, Ant=1.5, Walker2d=1.5)
 fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
                    ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
 ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
-fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{'Ant':0.675,'HalfCheetah':0.675,}}
+fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{'Ant':0.675,'HalfCheetah':67.5,}}
 
 
 def help_func():
@@ -94,9 +94,9 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                     for tag in tag2plot:
                                         if dir.startswith('velo') and tag == 'episode_cost' and v.tag[11:]=='episode_velo_mean':
                                             data_in_one_run_of_one_alg[tag].append(
-                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
-                                                    -1] + SMOOTHFACTOR * float(t)
-                                                if data_in_one_run_of_one_alg[tag] else float(t))
+                                                ((1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t)) / 1.69 * 149.0
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 1.69 * 149.0)
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
                                         elif tag ==  v.tag[11:] :
                                             data_in_one_run_of_one_alg[tag].append(
@@ -106,8 +106,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
                         for i,d in enumerate(data_in_one_run_of_one_alg[tag]):
                             step = data_in_one_run_of_one_alg['iteration'][i]
-                            # if step < 1e6:
-                            #     data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_bias[tag][task]
+                            if step < 1e6:
+                                data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_bias[tag][task]
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
