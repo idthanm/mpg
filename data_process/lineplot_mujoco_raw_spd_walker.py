@@ -165,7 +165,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
         title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, TRPO-L, PPO-L'\
-            .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed'
+            .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed ({})'.format(task)
         ax1.set_title(title, fontsize=fontsize)
         # ax1.set_xlim(0,3)
         if task in ylim_dict[tag]:
