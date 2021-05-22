@@ -26,7 +26,7 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':0,'Walker2d':0,},'episo
 
 
 def help_func():
-    tag2plot = ['episode_cost']
+    tag2plot = ['episode_return']
     alg_list = ['FSAC', 'CPO','PPO-Lagrangian','TRPO-Lagrangian', ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
     lbs = ['FAC','CPO','PPO-L','TRPO-L',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['Ant']
@@ -155,8 +155,8 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         compare_dict = dump_results(final_results)
         total_dataframe = df_list[0].append(df_list[1:], ignore_index=True) if len(df_list) > 1 else df_list[0]
         figsize = (6,6)
-        axes_size = [0.15, 0.11, 0.8, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
-        fontsize = 16
+        axes_size = [0.13, 0.11, 0.87, 0.75] #if env == 'path_tracking_env' else [0.095, 0.11, 0.905, 0.89]
+        fontsize = 18
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
         legend = True if task == 'Ant' and tag == 'episode_cost' else False

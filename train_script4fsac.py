@@ -86,7 +86,7 @@ def built_FSAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='back to avg approximate')  # training testing
+    parser.add_argument('--motivation', type=str, default='redo halfcheetah')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
@@ -99,7 +99,7 @@ def built_FSAC_parser():
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='Walker2d-v3')
+    parser.add_argument('--env_id', default='HalfCheetah-v3')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
@@ -111,7 +111,7 @@ def built_FSAC_parser():
     parser.add_argument('--gradient_clip_norm', type=float, default=10.)
     parser.add_argument('--lam_gradient_clip_norm', type=float, default=3.)
     parser.add_argument('--num_batch_reuse', type=int, default=1)
-    parser.add_argument('--cost_lim', type=float, default=10.0)
+    parser.add_argument('--cost_lim', type=float, default=30.0)
     parser.add_argument('--mlp_lam', default=True) # True: fsac, false: sac-lagrangian todo: add to new algo
     parser.add_argument('--double_QC', type=bool, default=False)
 
@@ -122,7 +122,7 @@ def built_FSAC_parser():
 
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=500000)
-    parser.add_argument('--replay_starts', type=int, default=3000)
+    parser.add_argument('--replay_starts', type=int, default=10000)
     parser.add_argument('--replay_batch_size', type=int, default=256)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
@@ -131,7 +131,7 @@ def built_FSAC_parser():
     # tester and evaluator
     parser.add_argument('--num_eval_episode', type=int, default=5)
     parser.add_argument('--eval_log_interval', type=int, default=1)
-    parser.add_argument('--fixed_steps', type=int, default=1000)
+    parser.add_argument('--fixed_steps', type=int, default=None)
     parser.add_argument('--eval_render', type=bool, default=False)
     num_eval_episode = parser.parse_args().num_eval_episode
     parser.add_argument('--num_eval_agent', type=int, default=1)
@@ -141,22 +141,22 @@ def built_FSAC_parser():
     parser.add_argument('--act_dim', type=int, default=None)
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--value_num_hidden_layers', type=int, default=2)
-    parser.add_argument('--value_num_hidden_units', type=int, default=64)
+    parser.add_argument('--value_num_hidden_units', type=int, default=256)
     parser.add_argument('--value_hidden_activation', type=str, default='elu')
-    parser.add_argument('--value_lr_schedule', type=list, default=[3e-5, 1000000, 1e-6])
-    parser.add_argument('--cost_value_lr_schedule', type=list, default=[3e-5, 1000000, 1e-6])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-5, 3000000, 1e-6])
+    parser.add_argument('--cost_value_lr_schedule', type=list, default=[8e-5, 3000000, 1e-6])
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_num_hidden_layers', type=int, default=2)
-    parser.add_argument('--policy_num_hidden_units', type=int, default=64)
+    parser.add_argument('--policy_num_hidden_units', type=int, default=256)
     parser.add_argument('--policy_hidden_activation', type=str, default='elu')
     parser.add_argument('--policy_out_activation', type=str, default='linear')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[8e-6, 500000, 1e-6])
-    parser.add_argument('--lam_lr_schedule', type=list, default=[1e-6, 150000, 1e-7])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-5, 1500000, 1e-6])
+    parser.add_argument('--lam_lr_schedule', type=list, default=[3e-5, 500000, 1e-6])
     parser.add_argument('--alpha', default='auto')  # 'auto' 0.02
     alpha = parser.parse_args().alpha
     if alpha == 'auto':
         parser.add_argument('--target_entropy', type=float, default=-3)
-    parser.add_argument('--alpha_lr_schedule', type=list, default=[1e-5, 500000, 1e-6])
+    parser.add_argument('--alpha_lr_schedule', type=list, default=[8e-5, 1500000, 1e-6])
     parser.add_argument('--policy_only', type=bool, default=False)
     parser.add_argument('--double_Q', type=bool, default=True)
     parser.add_argument('--target', type=bool, default=True)
@@ -174,18 +174,18 @@ def built_FSAC_parser():
     num_future_data = parser.parse_args().num_future_data
     parser.add_argument('--obs_scale', type=list, default=None)
     parser.add_argument('--rew_ptype', type=str, default='scale')
-    parser.add_argument('--rew_scale', type=float, default=0.1)
+    parser.add_argument('--rew_scale', type=float, default=0.2)
     parser.add_argument('--rew_shift', type=float, default=0.)
 
     # Optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=1800000)
+    parser.add_argument('--max_iter', type=int, default=3000000)
     parser.add_argument('--num_workers', type=int, default=NUM_WORKER)
     parser.add_argument('--num_learners', type=int, default=NUM_LEARNER)
     parser.add_argument('--num_buffers', type=int, default=NUM_BUFFER)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=25)
-    parser.add_argument('--grads_max_reuse', type=int, default=3)
+    parser.add_argument('--grads_max_reuse', type=int, default=4)
     parser.add_argument('--eval_interval', type=int, default=10000) # 1000
     parser.add_argument('--save_interval', type=int, default=200000) # 200000
     parser.add_argument('--log_interval', type=int, default=100) # 100
@@ -201,9 +201,9 @@ def built_FSAC_parser():
     parser.add_argument('--result_dir', type=str, default=results_dir)
     parser.add_argument('--log_dir', type=str, default=results_dir + '/logs')
     parser.add_argument('--model_dir', type=str, default=results_dir + '/models')
-    parser.add_argument('--model_load_dir', type=str, default='./results/FSAC/Walker2d/Walker2d-2021-05-16-11-22-56-s4/models')
-    parser.add_argument('--model_load_ite', type=int, default=200000)
-    parser.add_argument('--ppc_load_dir', type=str, default='./results/FSAC/Walker2d/Walker2d-2021-05-16-11-22-56-s4/models')
+    parser.add_argument('--model_load_dir', type=str, default=None)
+    parser.add_argument('--model_load_ite', type=int, default=None)
+    parser.add_argument('--ppc_load_dir', type=str, default=None)
 
     return parser.parse_args()
 
