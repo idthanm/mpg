@@ -327,7 +327,7 @@ class PolicyWithMu(tf.Module):
                                        value_hidden_activation, 1,
                                        name='Lam', output_activation='softplus', output_bias=-3.)
             self.init_lam_weights = self.Lam.get_weights()
-            self.Lam_optimizer = self.tf.keras.optimizers.Adagrad(lam_lr, name='lam_opt')
+            self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
         else:
             lam_lr = 3e-4
             self.Lam = LamModel(name='Lam')

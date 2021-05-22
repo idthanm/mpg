@@ -86,7 +86,7 @@ def built_FSAC_parser():
             parser.add_argument("-" + key, default=val)
         return parser.parse_args()
 
-    parser.add_argument('--motivation', type=str, default='add alpha lr')  # training testing
+    parser.add_argument('--motivation', type=str, default='debug adagrad')  # training testing
 
     # trainer
     parser.add_argument('--policy_type', type=str, default='PolicyWithMu')
