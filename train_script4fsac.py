@@ -66,7 +66,7 @@ def built_FSAC_parser():
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--mode', type=str, default='training') # training testing
-    parser.add_argument('--random_seed', type=int, default=4)
+    parser.add_argument('--random_seed', type=int, default=0)
     mode = parser.parse_args().mode
 
     if mode == 'testing':
@@ -99,7 +99,7 @@ def built_FSAC_parser():
     parser.add_argument('--demo', type=bool, default=False)
 
     # env
-    parser.add_argument('--env_id', default='HalfCheetah-v3')
+    parser.add_argument('--env_id', default='Ant-v3')
     parser.add_argument('--num_agent', type=int, default=1)
     parser.add_argument('--num_future_data', type=int, default=0)
 
