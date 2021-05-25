@@ -329,7 +329,7 @@ class PolicyWithMu(tf.Module):
             self.init_lam_weights = self.Lam.get_weights()
             self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
         else:
-            lam_lr = 3e-4
+            lam_lr = PolynomialDecay(3e-4, 500000, 1e-5)
             self.Lam = LamModel(name='Lam')
             self.Lam_optimizer = self.tf.keras.optimizers.Adam(lam_lr, name='lam_opt')
 
