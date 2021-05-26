@@ -13,9 +13,9 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 0.965 # 1 3 7 halfcheetah
+SMOOTHFACTOR = 0.8 # 1 3 7 halfcheetah
 SMOOTHFACTOR2 = 20
-SMOOTHFACTOR3 = 20
+SMOOTHFACTOR3 = 30
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
 base_dict = dict(HalfCheetah=1.5, Ant=1.5, Walker2d=1.5)
@@ -27,13 +27,10 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':0,'Walker2d':0,},'episo
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['FSAC', 'CPO','PPO-Lagrangian','TRPO-Lagrangian', ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['FAC','CPO','PPO-L','TRPO-L',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian','FSAC',  ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['CPO','PPO-L','TRPO-L','FAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['Ant']
-    #todo: CarGoal: sac
-    #todo: CarButton: sac choose better fac
-    # todo: CarPush: ???
-    palette = "dark"
+    palette = "bright"
     goal_perf_list = [-200, -100, -50, -30, -20, -10, -5]
     dir_str = '../results/{}/{}/data2plot' # .format(algo name) # /data2plot
     return tag2plot, alg_list, task, lbs, palette, goal_perf_list, dir_str
@@ -159,27 +156,30 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         fontsize = 18
         f1 = plt.figure(1, figsize=figsize)
         ax1 = f1.add_axes(axes_size)
-        legend = True if task == 'Ant' and tag == 'episode_cost' else False
-        if not legend:
-            sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
-                         data=total_dataframe, linewidth=2, palette=palette, legend=False
-                         )
-        else:
-            sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm",
-                         data=total_dataframe, linewidth=2, palette=palette
-                         )
+        sns.set_palette([(0.12156862745098039, 0.4666666666666667, 0.7058823529411765),
+                         # (1.0, 0.4980392156862745, 0.054901960784313725),
+                         (0.17254901960784313, 0.6274509803921569, 0.17254901960784313),
+                         (0.5803921568627451, 0.403921568627451, 0.7411764705882353),
+                         (0.8392156862745098, 0.15294117647058825, 0.1568627450980392),
+                         # (0.5490196078431373, 0.33725490196078434, 0.29411764705882354),
+                         # (0.8901960784313725, 0.4666666666666667, 0.7607843137254902),
+                         # (0.4980392156862745, 0.4980392156862745, 0.4980392156862745),
+                         (0.7372549019607844, 0.7411764705882353, 0.13333333333333333),
+                         (0.09019607843137255, 0.7450980392156863, 0.8117647058823529)]
+                        )
+        sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", err_kws={'alpha':0.1},
+                     data=total_dataframe, linewidth=2 , legend=False # palette=palette,
+                     )
         base = base_dict[task]
         handles, labels = ax1.get_legend_handles_labels()
+        print(handles)
+        print(labels)
         labels = lbs
         if tag == 'episode_cost':
             basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--')
-            if legend:
-                ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper left',
-                           frameon=False, fontsize=fontsize)
-        else:
-            if legend:
-                ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=1)
-        # print(ax1.lines[0].get_data())
+        # handles_ = [handles[-1]] + handles[:-1] + [basescore.lines[-1]]
+        #
+        # labels_ = [labels[-1]] + labels[:-1] + ['Constraint']
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
@@ -194,6 +194,18 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         # plt.show()
         fig_name = '../data_process/figure/' + task+'-'+tag + 'spd.png'
         plt.savefig(fig_name)
+        # legfig, legax = plt.subplots(figsize=(8, 1))
+        # legax.set_facecolor('white')
+        # if legend:
+        #     leg = legax.legend(handles=handles_, labels=labels_ + ['Constraint'],
+        #                        loc='center',
+        #                        frameon=False, fontsize=fontsize, ncol=5, borderaxespad=0., mode='expand',
+        #                        handlelength=1.5)
+        #     legax.xaxis.set_visible(False)
+        #     legax.yaxis.set_visible(False)
+        #     plt.tight_layout(pad=0.5)
+        #     fig_name2 = '../data_process/figure/legend.png'
+        #     plt.savefig(fig_name2)
         # allresults = {}
         # results2print = {}
         #
