@@ -49,8 +49,9 @@ class AMPCLearner(object):
         PI_obses_other_sum = []
         index = 0
         for i in range(len(start_veh_num)):
-            PI_obses_other_sum.append(self.tf.reduce_sum(PI_obses_other[index: index+start_veh_num[i], :], axis=0))
+            PI_obses_other_sum.append(self.tf.math.reduce_sum(PI_obses_other[index: index+start_veh_num[i], :], keepdims=True, axis=0))
             index += start_veh_num[i]
+        PI_obses_other_sum = self.tf.concat(PI_obses_other_sum, axis=0)
         if not grad:
             PI_obses_other_sum = self.tf.stop_gradient(PI_obses_other_sum)
         processed_obses = self.tf.concat((processed_obses_ego, PI_obses_other_sum), axis=1)

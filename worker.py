@@ -89,7 +89,6 @@ class OffPolicyWorker(object):
             obs_ego = self.obs[: self.args.state_ego_dim + self.args.state_track_dim]
             obs_other = np.reshape(self.obs[self.args.state_ego_dim + self.args.state_track_dim:],
                                   (-1, self.args.state_other_dim))
-
             processed_obs_ego, processed_obs_other = self.preprocessor.process_obs_PI(obs_ego, obs_other)
             PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
             processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)

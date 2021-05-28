@@ -12,7 +12,6 @@ import os
 import queue
 import random
 import threading
-import time
 
 import ray
 import tensorflow as tf
@@ -45,7 +44,6 @@ class UpdateThread(threading.Thread):
         self.stopped = False
         self.log_dir = self.args.log_dir
         self.model_dir = self.args.model_dir
-        self.init_time = time.time()
         if not os.path.exists(self.log_dir):
             os.makedirs(self.log_dir)
         if not os.path.exists(self.model_dir):
@@ -83,7 +81,7 @@ class UpdateThread(threading.Thread):
                 if self.grad_reuse < self.args.grads_max_reuse:
                     self.grad_reuse += 1
                 else:
-                    self.grad, self.learner_stats = self.inqueue.get(block=True) # todo
+                    self.grad, self.learner_stats = self.inqueue.get(timeout=30)
                     self.grad_reuse = 0
         # apply grad
         with self.grad_apply_timer:
@@ -97,9 +95,8 @@ class UpdateThread(threading.Thread):
 
         # log
         if self.iteration % self.args.log_interval == 0:
-            logger.info('updating {} in total, time for this iteration interval is {}'.format(self.iteration, time.time()-self.init_time))
+            logger.info('updating {} in total'.format(self.iteration))
             logger.info('sampling {} in total'.format(self.optimizer_stats['num_sampled_steps']))
-            self.init_time = time.time()
             with self.writer.as_default():
                 for key, val in self.learner_stats.items():
                     if not isinstance(val, list):
