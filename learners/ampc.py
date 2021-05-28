@@ -137,12 +137,13 @@ class AMPCLearner(object):
             obj_v_loss, obj_loss, punish_term_for_training, punish_loss, pg_loss, \
             real_punish_term, veh2veh4real, veh2road4real, pf\
                 = self.model_rollout_for_update(mb_obs_ego, mb_obs_other, mb_veh_num, ite, mb_ref_index)
+            obj_pi_loss = obj_v_loss / self.tf.convert_to_tensor(self.args.max_veh_num, dtype=self.tf.float32)
 
         with self.tf.name_scope('policy_gradient') as scope:
             pg_grad = tape.gradient(pg_loss, self.policy_with_value.policy.trainable_weights)
         with self.tf.name_scope('obj_v_gradient') as scope:
             obj_v_grad = tape.gradient(obj_v_loss, self.policy_with_value.obj_v.trainable_weights)
-            PI_net_grad = tape.gradient(obj_v_loss, self.policy_with_value.PI_net.trainable_weights)
+            PI_net_grad = tape.gradient(obj_pi_loss, self.policy_with_value.PI_net.trainable_weights)
 
         # with self.tf.name_scope('con_v_gradient') as scope:
         #     con_v_grad = tape.gradient(con_v_loss, self.policy_with_value.con_v.trainable_weights)
