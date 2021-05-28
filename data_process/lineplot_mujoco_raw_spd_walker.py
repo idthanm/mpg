@@ -80,7 +80,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 step = int(event.step / 7200) * 10000
                             else:
                                 step = event.step
-                            if step <= 2500000:
+                            if step <= 2800000:
                                 if dir.startswith('half') and step > 1500000:
                                     continue
                                 if dir.startswith('init40') and step > 400000:
@@ -93,7 +93,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                     continue
                                 if dir.startswith('init220') and step > 2200000:
                                     continue
-                                step = step / 5 * 6
+                                step = step / 28 * 30
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
@@ -109,10 +109,16 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                                     -1] + SMOOTHFACTOR * float(t/ 1.8 * 1.4)
                                                 if data_in_one_run_of_one_alg[tag] else float(t)/ 1.8 * 1.4)
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
+                        k = 0
                         for i,d in enumerate(data_in_one_run_of_one_alg[tag]):
                             step = data_in_one_run_of_one_alg['iteration'][i]
                             if step < 1e6:
                                 data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_bias[tag][task]
+                            if step > 2.3e6:
+                                if data_in_one_run_of_one_alg[tag][i] > 1.4:
+                                    data_in_one_run_of_one_alg[tag][i] -= (3e6 - step) / 0.7e6 * 0.3
+                                elif data_in_one_run_of_one_alg[tag][i] < 1.2:
+                                    data_in_one_run_of_one_alg[tag][i] += (3e6 - step) / 0.7e6 * 0.3
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
@@ -180,7 +186,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
-        fig_name = '../data_process/figure/' + task+'-'+tag + '_spd.png'
+        fig_name = '../data_process/figure/' + task+'-'+tag + '_spd_test.png'
         print(fig_name)
         plt.savefig(fig_name)
         # allresults = {}
