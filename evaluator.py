@@ -509,7 +509,7 @@ class EvaluatorWithCost(object):
         if self.eval_times % self.args.eval_log_interval == 0:
             logger.info('Evaluator_info: {}, {}'.format(self.get_stats(), mean_metric_dict))
         self.eval_times += 1
-        over_cost_lim = mean_metric_dict['episode_velo_mean'] > 1.8
+        over_cost_lim = mean_metric_dict['episode_velo_mean'] > 1.5 # 30: 1.8
         return over_cost_lim
 
 def run_evaluation_demo(self, iteration):
