@@ -76,7 +76,7 @@ class Preprocessor(object):
         self.args = args
         self.obs_ego_scale = np.array([0.2, 1., 2., 1 / 30., 1 / 30, 1 / 180.] +
                                       [1., 1 / 15., 0.2] + [1., 1., 1 / 15.] * self.args.env_kwargs_num_future_data)
-        self.obs_other_scale = np.array([1 / 30., 1 / 30., 0.2, 1 / 180.])
+        self.obs_other_scale = np.array([1 / 30., 1 / 30., 0.2, 1 / 180., 1.0])
         if 'num_agent' in kwargs.keys():
             self.ret = np.zeros(kwargs['num_agent'])
             self.num_agent = kwargs['num_agent']
@@ -117,22 +117,25 @@ class Preprocessor(object):
         else:
             return obs
 
-    def process_obs_PI(self, obs_ego, obs_other):
+    def process_obs_PI(self, obses_ego, obses_bike, obses_person, obses_veh):
         if self.obs_ptype == 'scale':
-            processed_obs_ego = obs_ego * self.obs_ego_scale
-            processed_obs_other = obs_other * self.obs_other_scale
-            return processed_obs_ego, processed_obs_other
+            processed_obses_ego = obses_ego * self.obs_ego_scale
+            processed_obses_bike = obses_bike * self.obs_other_scale
+            processed_obses_person = obses_person * self.obs_other_scale
+            processed_obses_veh = obses_veh * self.obs_other_scale
+            return processed_obses_ego, processed_obses_bike, processed_obses_person, processed_obses_veh
 
-    def tf_process_obses_PI(self, obses_ego, obses_other):
+    def tf_process_obses_PI(self, obses_ego, obses_bike, obses_person, obses_veh):
         with tf.name_scope('obs_process') as scope:
             if self.obs_ptype == 'scale':
                 processed_obses_ego = obses_ego * tf.convert_to_tensor(self.obs_ego_scale, dtype=tf.float32)
-                processed_obses_other = obses_other * tf.convert_to_tensor(self.obs_other_scale, dtype=tf.float32)
-                return processed_obses_ego, processed_obses_other
+                processed_obses_bike = obses_bike * tf.convert_to_tensor(self.obs_other_scale, dtype=tf.float32)
+                processed_obses_person = obses_person * tf.convert_to_tensor(self.obs_other_scale, dtype=tf.float32)
+                processed_obses_veh = obses_veh * tf.convert_to_tensor(self.obs_other_scale, dtype=tf.float32)
+                return processed_obses_ego, processed_obses_bike, processed_obses_person, processed_obses_veh
             else:
                 print('no scale')
-                return tf.convert_to_tensor(obses_ego, dtype=tf.float32), \
-                       tf.convert_to_tensor(obses_other, dtype=tf.float32)
+                raise ValueError
 
     def np_process_obses(self, obses):
         if self.obs_ptype == 'normalize':

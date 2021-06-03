@@ -70,10 +70,26 @@ class Evaluator(object):
         if render: self.env.render()
         if steps is not None:
             for _ in range(steps):
-                obs_ego = obs[: self.args.state_ego_dim + self.args.state_track_dim]
-                obs_other = np.reshape(obs[self.args.state_ego_dim + self.args.state_track_dim:],
-                                       (-1, self.args.state_other_dim))
-                processed_obs_ego, processed_obs_other = self.preprocessor.tf_process_obses_PI(obs_ego, obs_other)
+                # extract infos for each kind of participants
+                start = 0;
+                end = self.args.state_ego_dim + self.args.state_track_dim
+                obs_ego = obs[start:end]
+                start = end;
+                end = start + self.args.state_bike_dim
+                obs_bike = obs[start:end]
+                start = end;
+                end = start + self.args.state_person_dim
+                obs_person = obs[start:end]
+                start = end;
+                end = start + self.args.state_veh_dim
+                obs_veh = obs[start:end]
+                obs_bike = np.reshape(obs_bike, [-1, self.args.per_bike_dim])
+                obs_person = np.reshape(obs_person, [-1, self.args.per_person_dim])
+                obs_veh = np.reshape(obs_veh, [-1, self.args.per_veh_dim])
+                processed_obs_ego, processed_obs_bike, processed_obs_person, processed_obs_veh \
+                    = self.preprocessor.tf_process_obses_PI(obs_ego, obs_bike, obs_person, obs_veh)
+                processed_obs_other = tf.concat([processed_obs_bike, processed_obs_person, processed_obs_veh], axis=0)
+
                 PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
                 processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
 
@@ -84,9 +100,21 @@ class Evaluator(object):
                 reward_list.append(reward)
         else:
             while not done:
-                obs_ego = obs[: self.args.state_ego_dim + self.args.state_track_dim]
-                obs_other = np.reshape(obs[self.args.state_ego_dim + self.args.state_track_dim:], (-1, self.args.state_other_dim))
-                processed_obs_ego, processed_obs_other = self.preprocessor.tf_process_obses_PI(obs_ego, obs_other)
+                start = 0; end = self.args.state_ego_dim + self.args.state_track_dim
+                obs_ego = obs[start:end]
+                start = end; end = start + self.args.state_bike_dim
+                obs_bike = obs[start:end]
+                start = end; end = start + self.args.state_person_dim
+                obs_person = obs[start:end]
+                start = end; end = start + self.args.state_veh_dim
+                obs_veh = obs[start:end]
+                obs_bike = np.reshape(obs_bike, [-1, self.args.per_bike_dim])
+                obs_person = np.reshape(obs_person, [-1, self.args.per_person_dim])
+                obs_veh = np.reshape(obs_veh, [-1, self.args.per_veh_dim])
+                processed_obs_ego, processed_obs_bike, processed_obs_person, processed_obs_veh \
+                    = self.preprocessor.tf_process_obses_PI(obs_ego, obs_bike, obs_person, obs_veh)
+                processed_obs_other = tf.concat([processed_obs_bike, processed_obs_person, processed_obs_veh], axis=0)
+
                 PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
                 processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
 

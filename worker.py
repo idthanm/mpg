@@ -86,10 +86,22 @@ class OffPolicyWorker(object):
     def sample(self):
         batch_data = []
         for _ in range(self.batch_size):
-            obs_ego = self.obs[: self.args.state_ego_dim + self.args.state_track_dim]
-            obs_other = np.reshape(self.obs[self.args.state_ego_dim + self.args.state_track_dim:],
-                                  (-1, self.args.state_other_dim))
-            processed_obs_ego, processed_obs_other = self.preprocessor.process_obs_PI(obs_ego, obs_other)
+            # extract infos for each kind of participants
+            start = 0; end = self.args.state_ego_dim + self.args.state_track_dim
+            obs_ego = self.obs[start:end]
+            start = end; end = start + self.args.state_bike_dim
+            obs_bike = self.obs[start:end]
+            start = end; end = start + self.args.state_person_dim
+            obs_person = self.obs[start:end]
+            start = end; end = start + self.args.state_veh_dim
+            obs_veh = self.obs[start:end]
+
+            obs_bike = np.reshape(obs_bike, [-1, self.args.per_bike_dim])
+            obs_person = np.reshape(obs_person, [-1, self.args.per_person_dim])
+            obs_veh = np.reshape(obs_veh, [-1, self.args.per_veh_dim])
+            processed_obs_ego, processed_obs_bike, processed_obs_person, processed_obs_veh \
+                = self.preprocessor.process_obs_PI(obs_ego, obs_bike, obs_person, obs_veh)
+            processed_obs_other = np.concatenate([processed_obs_bike, processed_obs_person, processed_obs_veh])
             PI_obs_other = tf.reduce_sum(self.policy_with_value.compute_PI(processed_obs_other), axis=0)
             processed_obs = np.concatenate((processed_obs_ego, PI_obs_other.numpy()), axis=0)
             judge_is_nan([processed_obs])
@@ -106,12 +118,21 @@ class OffPolicyWorker(object):
                 judge_is_nan([action])
                 raise ValueError
             obs_tp1, reward, self.done, info = self.env.step(action.numpy()[0])
-            processed_rew = self.preprocessor.process_rew(reward, self.done)
-            obs_ego_next = obs_tp1[: self.args.state_ego_dim + self.args.state_track_dim]
-            obs_other_next = np.reshape(obs_tp1[self.args.state_ego_dim + self.args.state_track_dim:],
-                                        (-1, self.args.state_other_dim))
-            veh_num_next = info['veh_num']
-            batch_data.append((obs_ego_next, obs_other_next, veh_num_next, self.done, info['ref_index']))
+
+            start = 0; end = self.args.state_ego_dim + self.args.state_track_dim
+            obs_ego_next = obs_tp1[start:end]
+            start = end; end = start + self.args.state_bike_dim
+            obs_bike = obs_tp1[start:end]
+            start = end; end = start + self.args.state_person_dim
+            obs_person = obs_tp1[start:end]
+            start = end; end = start + self.args.state_veh_dim
+            obs_veh = obs_tp1[start:end]
+
+            obs_bike_next = np.reshape(obs_bike, [-1, self.args.per_bike_dim])
+            obs_person_next = np.reshape(obs_person, [-1, self.args.per_person_dim])
+            obs_veh_next = np.reshape(obs_veh, [-1, self.args.per_veh_dim])
+
+            batch_data.append((obs_ego_next, obs_bike_next, obs_person_next, obs_veh_next, self.done, info['ref_index']))
             self.obs = self.env.reset() if self.done else obs_tp1.copy()
             # self.env.render()
 
