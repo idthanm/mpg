@@ -50,17 +50,17 @@ class AMPCLearner(object):
         PI_obses_veh = self.policy_with_value.compute_PI(processed_obses_veh)
 
         PI_obses_bike_sum, PI_obses_person_sum, PI_obses_veh_sum = [], [], []
-        index = 0
-        for i in range(len(processed_obses_ego)):
-            PI_obses_bike_sum.append(self.tf.math.reduce_sum(PI_obses_bike[index: index+self.args.max_bike_num, :], keepdims=True, axis=0))
-            PI_obses_person_sum.append(self.tf.math.reduce_sum(PI_obses_person[index: index+self.args.max_person_num, :], keepdims=True, axis=0))
-            PI_obses_veh_sum.append(self.tf.math.reduce_sum(PI_obses_veh[index: index+self.args.max_veh_num, :], keepdims=True, axis=0))
-            index += self.args.max_veh_num
 
+        for i in range(len(processed_obses_ego)):
+            PI_obses_bike_sum.append(self.tf.math.reduce_sum(PI_obses_bike[i * self.args.max_bike_num: (i+1) * self.args.max_bike_num, :],
+                                                        keepdims=True, axis=0))
+            PI_obses_person_sum.append(self.tf.math.reduce_sum(PI_obses_person[i * self.args.max_person_num: (i+1) * self.args.max_person_num, :],
+                                                          keepdims=True, axis=0))
+            PI_obses_veh_sum.append(self.tf.math.reduce_sum(PI_obses_veh[i * self.args.max_veh_num: (i+1) * self.args.max_veh_num, :],
+                                                       keepdims=True, axis=0))
         PI_obses_bike_sum = self.tf.concat(PI_obses_bike_sum, axis=0)
         PI_obses_person_sum = self.tf.concat(PI_obses_person_sum, axis=0)
         PI_obses_veh_sum = self.tf.concat(PI_obses_veh_sum, axis=0)
-
         if not grad:
             PI_obses_bike_sum = self.tf.stop_gradient(PI_obses_bike_sum)
             PI_obses_person_sum = self.tf.stop_gradient(PI_obses_person_sum)

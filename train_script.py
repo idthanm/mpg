@@ -107,7 +107,7 @@ def built_AMPC_parser():
     # buffer
     parser.add_argument('--max_buffer_size', type=int, default=50000)
     parser.add_argument('--replay_starts', type=int, default=3000)
-    parser.add_argument('--replay_batch_size', type=int, default=256)
+    parser.add_argument('--replay_batch_size', type=int, default=480)
     parser.add_argument('--replay_alpha', type=float, default=0.6)
     parser.add_argument('--replay_beta', type=float, default=0.4)
     parser.add_argument('--buffer_log_interval', type=int, default=40000)
@@ -121,8 +121,8 @@ def built_AMPC_parser():
     # policy and model
     parser.add_argument('--value_model_cls', type=str, default='MLP')
     parser.add_argument('--policy_model_cls', type=str, default='MLP')
-    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 200000, 1e-5])
-    parser.add_argument('--value_lr_schedule', type=list, default=[8e-4, 200000, 1e-5])
+    parser.add_argument('--policy_lr_schedule', type=list, default=[3e-4, 600000, 1e-5])
+    parser.add_argument('--value_lr_schedule', type=list, default=[8e-4, 600000, 1e-5])
     parser.add_argument('--num_hidden_layers', type=int, default=2)
     parser.add_argument('--num_hidden_units', type=int, default=256)
     parser.add_argument('--hidden_activation', type=str, default='gelu')
@@ -132,7 +132,7 @@ def built_AMPC_parser():
 
     # model for PI_net
     parser.add_argument('--PI_model_cls', type=str, default='MLP')
-    parser.add_argument('--PI_lr_schedule', type=list, default=[8e-4, 200000, 1e-5])
+    parser.add_argument('--PI_lr_schedule', type=list, default=[8e-4, 600000, 1e-5])
     parser.add_argument('--PI_num_hidden_layers', type=int, default=2)
     parser.add_argument('--PI_num_hidden_units', type=int, default=256)
     parser.add_argument('--PI_hidden_activation', type=str, default='gelu')
@@ -147,9 +147,9 @@ def built_AMPC_parser():
 
     # optimizer (PABAL)
     parser.add_argument('--max_sampled_steps', type=int, default=0)
-    parser.add_argument('--max_iter', type=int, default=200000)
+    parser.add_argument('--max_iter', type=int, default=600000)
     parser.add_argument('--num_workers', type=int, default=4)
-    parser.add_argument('--num_learners', type=int, default=12)
+    parser.add_argument('--num_learners', type=int, default=10)
     parser.add_argument('--num_buffers', type=int, default=4)
     parser.add_argument('--max_weight_sync_delay', type=int, default=300)
     parser.add_argument('--grads_queue_size', type=int, default=20)
