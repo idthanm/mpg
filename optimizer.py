@@ -27,7 +27,7 @@ logger.setLevel(logging.INFO)
 
 WORKER_DEPTH = 2
 BUFFER_DEPTH = 4
-LEARNER_QUEUE_MAX_SIZE = 128
+LEARNER_QUEUE_MAX_SIZE = 192
 
 
 class UpdateThread(threading.Thread):
@@ -57,7 +57,7 @@ class UpdateThread(threading.Thread):
         self.grad = None
         self.learner_stats = None
         self.writer = tf.summary.create_file_writer(self.log_dir + '/optimizer')
-        self.ascent = 0
+        self.ascent = 1 # todo
 
     def run(self):
         while not self.stopped:
@@ -87,20 +87,10 @@ class UpdateThread(threading.Thread):
                     self.grad_reuse = 0
         # apply grad
         with self.grad_apply_timer:
-            # try:
-            #     judge_is_nan(self.grad)
-            # except ValueError:
-            #     self.grad = [tf.zeros_like(grad) for grad in self.grad]
-            #     logger.info('Grad is nan!, zero it')
-            # if self.ascent:
-
             qc_grad, lam_grad = self.local_worker.apply_gradients(self.iteration, self.grad, ascent=True)
-            if self.ascent:
+            self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
                 # print('apply ascent cstr')
-                self.local_worker.apply_ascent_gradients(self.iteration, qc_grad, lam_grad)
-            # else:
-            #     print('apply uncstr')
-            #     self.local_worker.apply_gradients(self.iteration, self.grad, ascent=False)
+
 
         # log
         if self.iteration % self.args.log_interval == 0:
@@ -129,9 +119,9 @@ class UpdateThread(threading.Thread):
             self.evaluator.set_weights.remote(self.local_worker.get_weights())
             if self.args.obs_ptype == 'normalize' or self.args.rew_ptype == 'normalize':
                 self.evaluator.set_ppc_params.remote(self.local_worker.get_ppc_params())
-            over_cost_lim = self.evaluator.run_evaluation.remote(self.iteration)
-            self.ascent += ray.get(over_cost_lim)
-            logger.info('ascent: {}'.format(self.ascent))
+            # over_cost_lim = self.evaluator.run_evaluation.remote(self.iteration)
+            # self.ascent += ray.get(over_cost_lim)
+            # logger.info('ascent: {}'.format(self.ascent))
 
         # save
         if self.iteration % self.args.save_interval == 0:

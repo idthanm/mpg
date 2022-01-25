@@ -26,9 +26,9 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{
 
 
 def help_func():
-    tag2plot = ['episode_return']
+    tag2plot = ['episode_cost']
     alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian','FSAC',  ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['CPO','PPO-L','TRPO-L','FAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['CPO','PPO-L','SAC-L','FAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
@@ -167,7 +167,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
-        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, TRPO-L, PPO-L'\
+        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, SAC-L, PPO-L'\
             .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed ({})'.format(task)
         ax1.set_title(title, fontsize=fontsize)
         # ax1.set_xlim(0,3)
@@ -176,7 +176,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
-        fig_name = '../data_process/figure/' + task+'-'+tag + '_spd.png'
+        fig_name = '../data_process/figure/icml-' + task+'-'+tag + '_spd.png'
         print(fig_name)
         plt.savefig(fig_name)
         # allresults = {}
