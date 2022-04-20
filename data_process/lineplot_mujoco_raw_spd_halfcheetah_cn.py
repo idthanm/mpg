@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import copy
 import os
 
@@ -27,8 +29,8 @@ fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian','FSAC',  ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['CPO','SAC-L','SAC-Exp','SFAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    alg_list = ['FSAC',  'CPO','PPO-Lagrangian','TRPO-Lagrangian',] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['SFAC', 'CPO','SAC-L','SAC-Exp',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
     task = ['HalfCheetah']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
@@ -149,7 +151,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         )
         # legend = True if task == 'Ant' and tag == 'episode_cost' else False
         sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", err_kws={'alpha':0.1},
-                     data=total_dataframe, linewidth=2 #, legend=False # palette=palette,
+                     data=total_dataframe, linewidth=2, style="algorithm", dashes=True #, legend=False # palette=palette,
                      )
         base = base_dict[task]
         handles, labels = ax1.get_legend_handles_labels()
@@ -168,7 +170,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
-        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, SAC-Exp, SAC-L'\
+        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n  CPO, SAC-Exp, SAC-L'\
             .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed ({})'.format(task)
         ax1.set_title(title, fontsize=fontsize)
         # ax1.set_xlim(0,3)
@@ -176,8 +178,9 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
             ax1.set_ylim(*ylim_dict[tag][task])
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
+        ax1.set_xlabel('') 
         # plt.show()
-        fig_name = '../data_process/figure/icml-' + task+'-'+tag + '_spd.png'
+        fig_name = '../data_process/figure/cn-' + task+'-'+tag + '_spd.png'
         print(fig_name)
         plt.savefig(fig_name)
         # allresults = {}

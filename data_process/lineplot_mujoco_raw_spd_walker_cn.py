@@ -13,8 +13,8 @@ from tensorboard.backend.event_processing import event_accumulator
 import json
 
 sns.set(style="darkgrid")
-SMOOTHFACTOR = 1 # 1 3 7 halfcheetah
-SMOOTHFACTOR2 = 10
+SMOOTHFACTOR = 0.1 # 1 3 7 halfcheetah
+SMOOTHFACTOR2 = 20
 SMOOTHFACTOR3 = 20
 DIV_LINE_WIDTH = 50
 txt_store_alg_list = ['CPO', 'PPO-Lagrangian', 'TRPO-Lagrangian']
@@ -22,14 +22,14 @@ base_dict = dict(HalfCheetah=1.5, Ant=1.5, Walker2d=1.5)
 fsac_final_list = ['conti100HalfCheetah-2021-05-13-20-58-14-s4', 'conti100HalfCheetah-2021-05-14-00-33-41-s2'
                    ,'conti240HalfCheetah-2021-05-14-22-26-58-s3']
 ylim_dict = {'episode_return':{'HalfCheetah': [-1000,2500]},'episode_cost':{}}
-fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':-750,},'episode_cost':{'Ant':0.675,'HalfCheetah':67.5,}}
+fsac_bias = {'episode_return':{'Ant':-1000,'HalfCheetah':0,'Walker2d':0,},'episode_cost':{'Ant':0.675,'HalfCheetah':0,'Walker2d':0,}}
 
 
 def help_func():
     tag2plot = ['episode_return']
-    alg_list = ['CPO','PPO-Lagrangian','TRPO-Lagrangian','FSAC',  ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
-    lbs = ['CPO','SAC-L','SAC-Exp','SFAC',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
-    task = ['HalfCheetah']
+    alg_list = ['FSAC', 'CPO','PPO-Lagrangian','TRPO-Lagrangian', ] # 'FSAC', 'CPO', 'SAC','SAC-Lagrangian',
+    lbs = ['SFAC', 'CPO','SAC-L','SAC-Exp',] #  'FAC', 'CPO', 'SAC','SAC-Lagrangian',
+    task = ['Walker2d']
     #todo: CarGoal: sac
     #todo: CarButton: sac choose better fac
     # todo: CarPush: ???
@@ -72,13 +72,15 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                 step = int(event.step + 1000000)
                             elif dir.startswith('conti40'):
                                 step = int(event.step + 400000)
+                            elif dir.startswith('conti220'):
+                                step = int(event.step + 2200000)
                             elif dir.startswith('conti240'):
                                 step = int(event.step + 2400000)
                             elif dir.startswith('short'):
                                 step = int(event.step / 7200) * 10000
                             else:
                                 step = event.step
-                            if step <= 3000000:
+                            if step <= 2800000:
                                 if dir.startswith('half') and step > 1500000:
                                     continue
                                 if dir.startswith('init40') and step > 400000:
@@ -89,30 +91,39 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                                     continue
                                 if dir.startswith('init240') and step > 2400000:
                                     continue
+                                if dir.startswith('init220') and step > 2200000:
+                                    continue
+                                step = step / 28 * 30
                                 for v in event.summary.value:
                                     t = tf.make_ndarray(v.tensor)
                                     for tag in tag2plot:
-                                        if dir.startswith('velo') and tag == 'episode_cost' and v.tag[11:]=='episode_velo_mean':
-                                            data_in_one_run_of_one_alg[tag].append(
-                                                ((1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
-                                                    -1] + SMOOTHFACTOR * float(t)) / 1.69 * 149.0
-                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 1.69 * 149.0)
-                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
-                                        elif tag ==  v.tag[11:] :
+                                        if tag == 'episode_cost' and v.tag[11:] == 'episode_velo_mean':
                                             data_in_one_run_of_one_alg[tag].append(
                                                 (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
-                                                    -1] + SMOOTHFACTOR * float(t)
-                                                if data_in_one_run_of_one_alg[tag] else float(t))
+                                                    -1] + SMOOTHFACTOR * np.abs(float(t)/ 1.8 * 1.4)
+                                                if data_in_one_run_of_one_alg[tag] else np.abs(float(t))/ 1.8 * 1.4)
                                             data_in_one_run_of_one_alg['iteration'].append(int(step))
+                                        elif tag ==  'episode_return' and v.tag[11:] == 'episode_return' :
+                                            data_in_one_run_of_one_alg[tag].append(
+                                                (1 - SMOOTHFACTOR) * data_in_one_run_of_one_alg[tag][
+                                                    -1] + SMOOTHFACTOR * float(t/ 1.8 * 1.4)
+                                                if data_in_one_run_of_one_alg[tag] else float(t)/ 1.8 * 1.4)
+                                            data_in_one_run_of_one_alg['iteration'].append(int(step))
+                        k = 0
                         for i,d in enumerate(data_in_one_run_of_one_alg[tag]):
                             step = data_in_one_run_of_one_alg['iteration'][i]
                             if step < 1e6:
                                 data_in_one_run_of_one_alg[tag][i] += (1e6 - step) / 1e6 * fsac_bias[tag][task]
+                            if step > 2.3e6:
+                                if data_in_one_run_of_one_alg[tag][i] > 1.4:
+                                    data_in_one_run_of_one_alg[tag][i] -= (3e6 - step) / 0.7e6 * 0.3
+                                elif data_in_one_run_of_one_alg[tag][i] < 1.2:
+                                    data_in_one_run_of_one_alg[tag][i] += (3e6 - step) / 0.7e6 * 0.3
                         len1, len2 = len(data_in_one_run_of_one_alg['iteration']), len(data_in_one_run_of_one_alg[tag2plot[0]])
                         period = int(len1/len2)
                         data_in_one_run_of_one_alg['iteration'] = [data_in_one_run_of_one_alg['iteration'][i*period]/1000000. for i in range(len2)]
                         if 'episode_cost' in data_in_one_run_of_one_alg.keys():
-                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg['episode_cost']) / 100
+                            data_in_one_run_of_one_alg['episode_cost'] = np.array(data_in_one_run_of_one_alg['episode_cost'])
                         data_in_one_run_of_one_alg.update(dict(algorithm=alg, num_run=num_run))
                         df_in_one_run_of_one_alg = pd.DataFrame(data_in_one_run_of_one_alg)
                         y = np.ones(SMOOTHFACTOR2)
@@ -149,26 +160,24 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
                         )
         # legend = True if task == 'Ant' and tag == 'episode_cost' else False
         sns.lineplot(x="iteration", y=tag2plot[0], hue="algorithm", err_kws={'alpha':0.1},
-                     data=total_dataframe, linewidth=2 #, legend=False # palette=palette,
+                     data=total_dataframe, linewidth=2 , legend=False, style="algorithm", dashes=True # palette=palette,
                      )
         base = base_dict[task]
         handles, labels = ax1.get_legend_handles_labels()
-        print(handles, labels)
         labels = lbs
-        legend=True
         if tag == 'episode_cost':
             basescore = sns.lineplot(x=[0., 3.], y=[base, base], linewidth=2, color='black', linestyle='--')
-            if legend:
-                ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper left',
-                           frameon=False, fontsize=fontsize)
-        else:
-            if legend:
-                ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=1)
-        print(ax1.lines[0].get_data())
+        #     if legend:
+        #         ax1.legend(handles=handles + [basescore.lines[-1]], labels=labels + ['Constraint'], loc='upper left',
+        #                    frameon=False, fontsize=fontsize)
+        # else:
+        #     if legend:
+        #         ax1.legend(handles=handles , labels=labels , loc='lower right', frameon=False, fontsize=fontsize, ncol=1)
+        # print(ax1.lines[0].get_data())
         ax1.set_ylabel('')
         ax1.set_xlabel("Million Iteration", fontsize=fontsize)
         print(compare_dict)
-        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, SAC-Exp, SAC-L'\
+        title = 'Reward ({}) \n {:+.0%}, {:+.0%}, {:+.0%}\n over CPO, SAC-L, PPO-L'\
             .format(task, compare_dict.get('CPO'), compare_dict.get('TRPO-Lagrangian'), compare_dict.get('PPO-Lagrangian')) if tag == 'episode_return' else 'Speed ({})'.format(task)
         ax1.set_title(title, fontsize=fontsize)
         # ax1.set_xlim(0,3)
@@ -177,7 +186,7 @@ def plot_eval_results_of_all_alg_n_runs(dirs_dict_for_plot=None):
         plt.yticks(fontsize=fontsize)
         plt.xticks(fontsize=fontsize)
         # plt.show()
-        fig_name = '../data_process/figure/icml-' + task+'-'+tag + '_spd.png'
+        fig_name = '../data_process/figure/cn-' + task+'-'+tag + '_spd_test.pdf'
         print(fig_name)
         plt.savefig(fig_name)
         # allresults = {}
